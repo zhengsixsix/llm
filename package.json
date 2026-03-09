@@ -1,0 +1,29 @@
+{
+  "name": "excel-to-xmind-ai",
+  "version": "1.0.0",
+  "description": "AI-powered Excel to XMind converter",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node src/index.js"
+  },
+  "keywords": [
+    "excel",
+    "xmind",
+    "ai",
+    "claude"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "dotenv": "^16.0.3",
+    "jsonrepair": "^3.13.2",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.11.0",
+    "openai": "^6.25.0",
+    "puppeteer": "^23.10.0",
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5",
+    "xmind": "^2.2.33"
+  }
+}
