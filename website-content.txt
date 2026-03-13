@@ -1,332 +1,686 @@
 === projectWebsite ===
-Title: Programme Details
+Title: 72026-ATF-ATP-LCF-LCP - Master of Science in Generative AI and the Humanities
 
-URL Source: https://portal.hku.hk/tpg-admissions/programme-details?programme=master-of-arts-in-the-field-of-museum-studies-arts&mode=1
+URL Source: https://www.polyu.edu.hk/study/pg/tpg/2026/72026-atf-atp-lcf-lcp
 
 Markdown Content:
-Programme Details
-===============
+Aims & Characteristics
 
+**Programme Aims**
 
+This programme responds to the growing demand for professionals who can bridge the gap between artificial intelligence (AI) and the humanities. Therefore, it aims to foster interdisciplinary excellence by combining knowledge of AI with knowledge of the humanities. In particular, by providing students with a comprehensive education that integrates technical AI skills with humanistic insights, the programme aims to equip graduates with a holistic understanding of AI’s impact on language, communication, the arts, and culture.
 
-*   About HKU
-    *   About HKU
-    *   About HK
-    *   HKU Home
+**Characteristics**
 
-*   Programme Information
-    *   Programmes by Faculty and School
-    *   Programme Listing
+This is the first programme in Hong Kong and the world to allow students to focus on generative AI within the context of the humanities. The unique interdisciplinary approach of the programme draws on cutting-edge research insights into the humanities and AI, and aims to nurture a new generation of interdisciplinary professionals capable of exploiting AI technologies to advance humanities-related studies and applications. Thus, graduates can address complex societal challenges and contribute to innovation in various industries.
 
-*   Finance & Student Support
-    *   Finance & Student Support
-    *   Facilities & Support
-    *   Programme Fee And Payment
-    *   Academic Awards
-    *   Government Grants & Loans
-    *   University Financial Assistance
-    *   Hong Kong Future Talents Scholarship Scheme for Advanced Studies
+Recognition & Prospects
 
-*   Events
-*   Applying
-    *   Applying to HKU
-    *   Programme Listing
-    *   Admission Requirements
-    *   Application Procedures
-    *   Application Fees
-    *   FAQ
+Graduates are equipped with the necessary skills and knowledge to contribute to their professional fields while critically engaging with the social implications of AI in humanities contexts. The programme’s interdisciplinary approach and emphasis on creative thinking and problem-solving also promotes strategic thinking and holistic analysis, thereby equipping graduates with the intellectual skills to solve complex problems and contribute to the advancement of knowledge. Ultimately, graduates of the programme can help to realise the societal benefits of AI while preventing it from adversely impacting the humanities.
 
-[](javascript:void(0))
+Curriculum
 
-###### My Bookmarked List
+**Programme Structure**
 
-[](javascript:void(0))
+Students are required to complete 18 compulsory credits and 12 elective credits in subjects related to their specialism.
 
-[](javascript:void(0))
+**Core Areas of Study**
 
-What are you looking for?
-=========================
+**Compulsory Subjects**
 
-Search for: Search
+*   AI Applications in the Humanities
+*   Computational Linguistics and NLP Technologies
+*   Computer Programming in Language and Communication
+*   Digital Studies of Chinese Culture
+*   Introduction to Generative AI and Its Applications
+*   Professional Ethics and Academic Integrity
+*   The Ethical Context of Generative AI
 
-Faculty of Arts
+**Elective Subjects**
 
-Master of Arts in the field of Museum Studies
+Elective Subjects with a Specialism in Language and Communication
 
-*   Overview
-*   Medium of Instruction
-*   Entrance Requirements
-*   Download Documents
-*   Faculty
-*   Contacts
+*   Advanced Artificial Intelligence
+*   Advanced Data Analytics
+*   Advanced Translation for Business and Commerce
+*   Artificial Intelligence and Big Data Computing in Practice
+*   Artificial Intelligence Concepts
+*   Bilingual Communication and Language Technology in Chinese Context
+*   Capstone Project in Language and Communication
+*   Communication in Multicultural and Multilingual Contexts
+*   Computer Vision and Image Processing
+*   Corpus Linguistics and AI
+*   Data Analytics for Applied Language Scientists
+*   Dissertation in Language and Communication
+*   Generative AI for Innovative Communications
+*   Human Computer Interaction
+*   Language and Intercultural Communication in the Workplace
+*   Machine Learning and Data Analytics
+*   Multimedia Applications for Language Professionals and Translators
+*   Multimedia Coding and Networking
+*   Multimodality and Professional Communication
+*   Natural Language Processing
 
-Apply Now
+Elective Subjects with a Specialism in Arts and Culture
 
-Faculty of Arts
+*   Advanced Artificial Intelligence
+*   Advanced Data Analytics
+*   AI Tools for Creative Process and Transmedia
+*   AI-Driven Cross-Cultural Linguistic Exploration: Preserving, Translating, and Interpreting Chinese and Bilingual Heritage
+*   AI-Powered Language Analysis and Communication Strategies
+*   Artificial Intelligence and Big Data Computing in Practice
+*   Artificial Intelligence Concepts
+*   Capstone Project in Arts and Culture
+*   Chinese Studies and Generative AI: Opportunity, Challenge, and Ethics
+*   Chinese Traditional Theatre and Performing Arts
+*   Computer Vision and Image Processing
+*   Digital Art Assets: Bringing Crafts to Markets and NFTs
+*   Digital Storytelling for Transmedia
+*   Dissertation in Arts and Culture
+*   Early Chinese Thought, Belief, and Technology
+*   English Literature and Language Arts
+*   Generative AI for Innovative Communications
+*   Multimedia Coding and Networking
+*   Natural Language Processing
+*   The Making of Chinese Martial Arts Tradition
+*   Virtual and Augmented Reality
 
-Master of Arts in the field of Museum Studies
+Information on the subjects offered can be obtained at https://www.polyu.edu.hk/cbs/study/taught-postgraduate-programmes/master-of-science-in-generative-ai-and-the-humanities/curriculum.
 
-Apply Now
+(The above subject list is subject to revision.)
 
-!Image 3: Banner_Image
+Credit Required for Graduation
 
-Faculty of Arts
+31
 
-Master of Arts in the field of Museum Studies
+Programme Leader(s)
 
-MA | Full-time
+Prof. Liu Kanglong
 
-Add to Bookmark
+_PhD_
 
-###### Programme Highlights:
+Subject Area
 
-*   Full-time
+Generative AI and the Humanities
 
-!Image 4: Expected Duration
+Entrance Requirements
 
- Expected Duration 
+*   A Bachelor’s degree from a recognised institution.
 
- 1 year 
+*   If you are not a native speaker of English, and your Bachelor's degree or equivalent qualification is awarded by institutions where the medium of instruction is not English, you are expected to fulfil the University's minimum English language requirement for admission purpose. Please refer to the "Admission Requirements" section for details.
 
-!Image 5: Fees
+*   Non-native Chinese-speaking students who choose the specialism of Arts and Culture must have a good knowledge of the Chinese language.
 
- Fees 
+*   Applicants may be required to attend interviews or tests to demonstrate their language proficiency.
 
-Composition fee (Provisional)
+Enquiries
 
-HK$320,000
+For further information on academic matters, please contact:
 
-!Image 6: Expected Programme Start Date
+Prof. Liu Kanglong, Programme Leader (tel: (852) 2766 7451; email: kl.liu@polyu.edu.hk).
 
- Expected Programme Start Date 
+For general information, please contact:
 
- September 2026 
+LST General Office (tel: (852) 2766 7454; email:lst.tpg@polyu.edu.hk).
 
-!Image 7: Application Deadline
+Other Information
 
- Application Deadline 
+Medium of Instruction
 
-Main Round:
+The programme is delivered in English and Chinese (Chinese [Putonghua] is only used for electives subjects in translation and Chinese arts and culture).
 
-12:00 noon (GMT +8), May 15, 2026
+Remarks
 
-!Image 8: Description
+Starting from 2024/25 cohort, students are required to complete the compulsory 1-credit subject “CBS5T01 Professional Ethics and Academic Integrity” to satisfy the Academic Integrity and Ethics (AIE) requirement for graduation. No credit fee will be charged for this subject.
 
- Description 
+Programme Leaflet
 
- Full Time (one year,with classes primarily on weekday mornings and afternoons, and specific electives on weekday evenings and weekends.)(The semester courses offered by the programme will vary from time to time.) Applicants who do not receive a conditional offer by mid-July may consider their application unsuccessful. 
+Please click here[](https://www.polyu.edu.hk/study/pg)to download.
 
-Apply Now
+Tuition Fee
 
-!Image 9: Expected Duration
+HK$10,100 per credit
 
- Expected Duration 
+(Note: No credit fee will be charged for the 1-credit subject “CBS5T01 Professional Ethics and Academic Integrity”.)
 
-!Image 10: Fees
+Additional Documents Required
 
- Fees 
+Transcript / Certificate
 
- To be updated 
+Curriculum Vitae
 
-!Image 11: Expected Programme Start Date
-
- Expected Programme Start Date 
-
- To be updated 
-
-!Image 12: Application Deadline
-
- Application Deadline 
-
-!Image 13: Description
-
- Description 
-
-Apply
-
-###### Share this:
-
-")
-
-#### Overview
-
-The Master of Arts in the field of Museum Studies is an academic programme connecting traditional scholarly subjects taught in the humanities, such as Art History and History, with more practical professional tasks, such as public education and management. It teaches theories and practical procedures to understand the complex museum system, as well as activities including collecting, curating, exhibition making, restoring, preserving, documenting, public programming and education.
-
-Works of art tell stories from the past and present. Museums are places to experience these narratives. One of the aims of museum studies is to understand how these contents are connected and how they can be prepared for an interested public and communicated through exhibitions. Another goal is to learn all about how objects can be collected, researched, archived and preserved for future generations. Students of museum studies learn how the activities of collecting, exhibiting, mediating and caring are applied to objects of cultural and scientific interest to humanity in public and private collections. Furthermore, students learn a critical perspective in dealing with source materials such as artefacts, archival documents and contemporary oral traditions. Through observation, interpretation and exchange with other academic opinions, they learn scientific argumentation and the basics of comparative research, which focuses on the object.
-
-#### Medium of Instruction
-
-English
-
-#### Entrance Requirements
-
-Bachelor's degree with a major in museum studies or art history; or a closely related subject.
-
-Closely related subjects include cultural heritage, conservation, archaeology, cultural management, or other related disciplines. Alternatively, applicants may demonstrate a strong interest in these areas through relevant experience or qualifications.
-
-#### Download Documents
-
-For additional information, we recommend reviewing the following documents:
-
-Additional Information Regulations & Syllabuses Supporting Documents 
-
-!Image 23: programme image
-#### Faculty
-
-Faculty of Arts
-
- The Faculty of Arts is one of the flagship faculties of the University of Hong Kong (HKU) and is an internationally renowned and leading humanities faculty. It is ranked 2nd in Asia and 14th in the world for Arts and Humanities in the U.S. News & World Report – 2025-2026 Best Global Universities Rankings. It is also ranked 1st in Asia and 18th in the world in Arts and Humanities in the QS World University Rankings by Subject 2025, and 4th in Asia and 1st in Hong Kong in Arts and Humanities in the Times Higher Education World University Rankings by Subject 2025. The QS World University Subject Rankings 2025 places the Linguistics (9th), History of Art (12th), English Language and Literature (17th), and Modern Languages (17th) subjects among the top 20 worldwide. The Faculty of Arts’ presence amongst the best institutions in the world is evidence of its exceptional record in teaching and research.
-
-The Faculty strives to attract and nurture outstanding scholars and students from around the world through excellence and innovation in teaching and learning, research, and knowledge exchange. We are dedicated to fulfilling our mission to produce graduates with highly developed analytical, linguistic, critical and creative skills, for leadership and success in their professional and life endeavours.
-
-The Faculty is committed to serving the lifelong learning needs of the community. Information on our top-quality taught postgraduate programmes are available in the programme websites. 
-
-
-
-!Image 26: programme image
-
-#### Contacts
-
-If you have any inquiries regarding the programme or faculty, please do not hesitate to reach out to us using the contact methods provided below:
-
-Programme Admissions Advisor(s)
-
-Professor Derek Collins
-
-!Image 27: emailmamuseumstudies@hku.hk
-
-Contact Info
-
-!Image 28: telephone (852) 3917 5805 
-
-!Image 29: emailmamuseumstudies@hku.hk
-
-!Image 30: websitehttps://mamuseumstudies.arts.hku.hk
-
-!Image 31: fax (852) 2546 9659 
-
-#### You may also be interested in
-
-
-
-
-
-
-
-!Image 35: Related programmes background
-
-!Image 36: Taught Postgraduate Admissions The University of Hong Kong Logo
-
-##### Contact us
-
-Admissions Office, Registry
-
-For any programme-related enquiries, please contact the relevant Faculty or programme office. Their contact information is available on the programme page.
-
-##### Connect
-
-
-
-Connect with us
-
-##### About HKU
-
-*   About HKU
-*   About HK
-*   HKU Home
-
-##### Programme Information
-
-*   Faculty of Architecture
-*   Faculty of Arts
-*   Faculty of Dentistry
-*   Faculty of Education
-*   Faculty of Engineering
-*   Faculty of Law
-*   Faculty of Science
-*   Faculty of Social Sciences
-*   HKU Business School
-*   LKS Faculty of Medicine
-*   School of Computing and Data Science
-*   School of Governance and Policy
-
-##### Finance & Student Support
-
-*   Finance & Student Support
-*   Facilities & Support
-*   Programme Fee And Payment
-*   Academic Awards
-*   Government Grants & Loans
-*   University Financial Assistance
-*   Hong Kong Future Talents Scholarship Scheme for Advanced Studies
-
-##### Events
-
-##### Applying
-
-*   Applying to HKU
-*   Programme Listing
-*   Admission Requirements
-*   Application Procedures
-*   Application Fees
-*   FAQ
-
-Can't find what you need?✕
-
-!Image 43: Chatbot Icon
-
-Copyright © 2024 Taught Postgraduate Admissions, The University of Hong Kong. All rights reserved.
+Personal Statement
 
 
 === curriculumLink ===
-### CONTACT
+### GRF-Funded Workshop Successfully Explored Chinese Morphological Instruction for Non-Chinese Speaking Students to Enhance the "Big Six" Competencies
 
-Do you have qu estions about studying Museum Studies at The University of Hong Kong?
+The LST Seminar "Workshop Series for Enhancing the Big Six Competencies in Chinese Language Proficiency for Non-Chinese Speaking Students (I): Case studies and common…
 
-Contact our study adv isors:
+16 Feb 2026
 
-### mamuseumstudies@hku.hk
 
-###### © 2025 by University Museum and Art Gallery, HKU. All Rights Reserved
 
-University of Hong Kong
+### LST’s Prof. Elaine Kwong Featured on Ming Pao Daily and HOY TV to Discuss Ultrasound-Based Swallowing Measures
 
-Faculty of Arts
+Prof. Elaine Kwong, Associate Professor in the Department of Language Science and Technology and Associate Director of the Research Institute for Smart Ageing, was featured in…
 
-School of Humanities
+10 Dec 2025
 
-University Museum and Art Gallery
 
-*   
-*   
-*   
-*   
 
-bottom of page
+### The 9th International Conference on Multicultural Discourses & The 13th Symposium on Contemporary Chinese Discourses: A Resounding Success
 
+The 9th International Conference on Multicultural Discourses and the 13th Symposium on Contemporary Chinese Discourses, held from November 15 to 17, 2025, at the Hong…
+
+21 Nov 2025
+
+
+
+### LST PhD Student and Team Secure 5th Place in Women’s Youth Team Event at 15th National Games Bridge Tournament
+
+LST PhD student Hui Ka Yee, Ruby represented Hong Kong in the Women’s Youth Team Event at the Mass Participation Events of the 15th National Games – Bridge, held in…
+
+12 Nov 2025
+
+
+
+### MA Student in Chinese Language and Literature Wins 2025 Outstanding Thesis Award
+
+Miss Yin Haiqin, a postgraduate student in the Master’s Programme in Chinese Language and Literature (supervised by Prof. Leung Wai Mun), was awarded the Third Prize for…
+
+25 Sep 2025
+
+
+
+### CBS PhD Student Wins Awards at the 50th Hong Kong Youth Translation Competition
+
+Congratulations to Ms. HUI Ka Yee Ruby, a PhD student from CBS, on winning First Runner-Up (Chinese-English) and a Merit (English-Chinese) in the Open Category of the 50th Hong…
+
+26 Aug 2025
+
+
+
+### Outstanding Alumni Award of PolyU CBS 2025 - Result Announcement
+
+The Outstanding Alumni Award of PolyU CBS aims to give public recognition to outstanding CBS graduates for their professional achievements and significant contributions to…
+
+31 Jul 2025
+
+
+
+### CBS’s Discover Hong Kong: Language & Communication Competition 2025 Concludes with Resounding Success
+
+“Discover Hong Kong: Language & Communication Competition 2025”, an innovative initiative organised by The Hong Kong Polytechnic University’s Department of Chinese…
+
+13 Jul 2025
+
+
+
+### PolyU Students Excel at 9th Korean Consul General Cup Speech Contest
+
+On 28 June 2025, two outstanding Korean minor students from The Hong Kong Polytechnic University have achieved remarkable success at the prestigious 9th Korean Consul…
+
+28 Jun 2025
+
+
+
+### International Symposium on Global Corporate Communication in the Greater Bay Area Successfully Concludes
+
+The International Symposium on Global Corporate Communication in the Greater Bay Area was successfully held on 14 June 2025 at The Hong Kong Polytechnic University…
+
+14 Jun 2025
+
+
+
+### GRF-Funded Workshop Successfully Explored Chinese Morphological Instruction for Non-Chinese Speaking Students to Enhance the "Big Six" Competencies
+
+The LST Seminar "Workshop Series for Enhancing the Big Six Competencies in Chinese Language Proficiency for Non-Chinese Speaking Students…
+
+16 Feb 2026
+
+
+
+### LST’s Prof. Elaine Kwong Featured on Ming Pao Daily and HOY TV to Discuss Ultrasound-Based Swallowing Measures
+
+Prof. Elaine Kwong, Associate Professor in the Department of Language Science and Technology and Associate Director of the Research Institute…
+
+10 Dec 2025
+
+
+
+### The 9th International Conference on Multicultural Discourses & The 13th Symposium on Contemporary Chinese Discourses: A Resounding Success
+
+The 9th International Conference on Multicultural Discourses and the 13th Symposium on Contemporary Chinese Discourses, held from…
+
+21 Nov 2025
+
+
+
+### LST PhD Student and Team Secure 5th Place in Women’s Youth Team Event at 15th National Games Bridge Tournament
+
+LST PhD student Hui Ka Yee, Ruby represented Hong Kong in the Women’s Youth Team Event at the Mass Participation Events of the 15th…
+
+12 Nov 2025
+
+
+
+### MA Student in Chinese Language and Literature Wins 2025 Outstanding Thesis Award
+
+Miss Yin Haiqin, a postgraduate student in the Master’s Programme in Chinese Language and Literature (supervised by Prof. Leung Wai Mun)…
+
+25 Sep 2025
+
+
+
+### CBS PhD Student Wins Awards at the 50th Hong Kong Youth Translation Competition
+
+Congratulations to Ms. HUI Ka Yee Ruby, a PhD student from CBS, on winning First Runner-Up (Chinese-English) and a Merit (English-Chinese)…
+
+26 Aug 2025
+
+
+
+### Outstanding Alumni Award of PolyU CBS 2025 - Result Announcement
+
+The Outstanding Alumni Award of PolyU CBS aims to give public recognition to outstanding CBS graduates for their professional achievements…
+
+31 Jul 2025
+
+
+
+### CBS’s Discover Hong Kong: Language & Communication Competition 2025 Concludes with Resounding Success
+
+“Discover Hong Kong: Language & Communication Competition 2025”, an innovative initiative organised by The Hong Kong…
+
+13 Jul 2025
+
+
+
+### PolyU Students Excel at 9th Korean Consul General Cup Speech Contest
+
+On 28 June 2025, two outstanding Korean minor students from The Hong Kong Polytechnic University have achieved remarkable success at…
+
+28 Jun 2025
+
+
+
+### International Symposium on Global Corporate Communication in the Greater Bay Area Successfully Concludes
+
+The International Symposium on Global Corporate Communication in the Greater Bay Area was successfully held on 14 June 2025 at The Hong…
+
+14 Jun 2025
+
+
+
+### GRF-Funded Workshop Successfully Explored Chinese Morphological Instruction for Non-Chinese Speaking Students to Enhance the "Big Six" Competencies
+
+The LST Seminar "Workshop Series for Enhancing the Big Six Competencies in Chinese Language Proficiency for Non-Chinese Speaking Students…
+
+16 Feb 2026
+
+
+
+### LST’s Prof. Elaine Kwong Featured on Ming Pao Daily and HOY TV to Discuss Ultrasound-Based Swallowing Measures
+
+Prof. Elaine Kwong, Associate Professor in the Department of Language Science and Technology and Associate Director of the Research Institute…
+
+10 Dec 2025
+
+
+
+### The 9th International Conference on Multicultural Discourses & The 13th Symposium on Contemporary Chinese Discourses: A Resounding Success
+
+The 9th International Conference on Multicultural Discourses and the 13th Symposium on Contemporary Chinese Discourses, held from…
+
+21 Nov 2025
+
+
+
+### LST PhD Student and Team Secure 5th Place in Women’s Youth Team Event at 15th National Games Bridge Tournament
+
+LST PhD student Hui Ka Yee, Ruby represented Hong Kong in the Women’s Youth Team Event at the Mass Participation Events of the 15th…
+
+12 Nov 2025
+
+
+
+### MA Student in Chinese Language and Literature Wins 2025 Outstanding Thesis Award
+
+Miss Yin Haiqin, a postgraduate student in the Master’s Programme in Chinese Language and Literature (supervised by Prof. Leung Wai Mun)…
+
+25 Sep 2025
+
+
+
+### CBS PhD Student Wins Awards at the 50th Hong Kong Youth Translation Competition
+
+Congratulations to Ms. HUI Ka Yee Ruby, a PhD student from CBS, on winning First Runner-Up (Chinese-English) and a Merit (English-Chinese)…
+
+26 Aug 2025
+
+
+
+### Outstanding Alumni Award of PolyU CBS 2025 - Result Announcement
+
+The Outstanding Alumni Award of PolyU CBS aims to give public recognition to outstanding CBS graduates for their professional achievements…
+
+31 Jul 2025
+
+
+
+### CBS’s Discover Hong Kong: Language & Communication Competition 2025 Concludes with Resounding Success
+
+“Discover Hong Kong: Language & Communication Competition 2025”, an innovative initiative organised by The Hong Kong…
+
+13 Jul 2025
+
+
+
+### PolyU Students Excel at 9th Korean Consul General Cup Speech Contest
+
+On 28 June 2025, two outstanding Korean minor students from The Hong Kong Polytechnic University have achieved remarkable success at…
+
+28 Jun 2025
+
+
+
+### International Symposium on Global Corporate Communication in the Greater Bay Area Successfully Concludes
+
+The International Symposium on Global Corporate Communication in the Greater Bay Area
 
 === activitiesLink ===
-### CONTACT
+Title: Master of Science in Generative AI and the Humanities (MScGAH) - Curriculum | Master of Science in Generative AI and the Humanities (MScGAH) | Taught Postgraduate Programmes | Study | Department of Language Science and Technology
 
-Do you have qu estions about studying Museum Studies at The University of Hong Kong?
+URL Source: https://www.polyu.edu.hk/lst/study/taught-postgraduate-programmes/master-of-science-in-generative-ai-and-the-humanities/curriculum/
 
-Contact our study adv isors:
+Markdown Content:
+Master of Science in Generative AI and the Humanities (MScGAH) - Curriculum | Department of Language Science and Technology
+===============
 
-### mamuseumstudies@hku.hk
+Skip to main content
 
-###### © 2025 by University Museum and Art Gallery, HKU. All Rights Reserved
+Special Announcement
 
-University of Hong Kong
+20 Mar 2025
 
-Faculty of Arts
+The Office of the Department has moved to Room 802, 8/F, PolyU Hung Hom Bay Campus, 8 Hung Lok Road, Hung Hom, Kowloon, Hong Kong w.e.f. 20 March 2025.
 
-School of Humanities
 
-University Museum and Art Gallery
 
-*   
-*   
-*   
-*   
 
-bottom of page
+
+Faculty of Humanities
+
+Open Site Search Popup
+
+Share
+*   Facebook;)
+*   Linkedin;)
+*   Twitter;)
+*   Weibo;)
+*   Mail;)
+*   Copy Link;)
+
+Intranet
+
+StudentStaff
+
+Quick Access
+
+Quick Access
+
+*   PolyU 85th Anniversary
+*   About PolyU
+*   Campus Map
+*   PolyU A to Z
+*   Research at PolyU
+*   Study at PolyU
+
+
+
+Menu
+
+*   People
+    *   Academic Staff
+    *   Honorary and Adjunct Appointments
+    *   Research Personnel
+    *   Supporting Staff
+    *   Alumni
+        *   Events and Activities
+        *   Alumni Association
+        *   Outstanding Alumni Award
+        *   Mentorship Programme
+        *   Giving to LST
+
+*   Study
+    *   Undergraduate Programmes
+        *   BSc (Hons) in Language Science and Technology
+        *   Bachelor of Science (Honours) in Speech Therapy
+        *   Bachelor of Arts (Honours) in Linguistics and Translation (Senior Year Admission)
+        *   Bachelor of Science (Honours) in Language Sciences and Analytics (Senior Year Admission)
+        *   Minor Programme
+            *   Linguistics and Translation
+            *   Japanese
+            *   Korean
+
+        *   Secondary Major Programme
+            *   BA (Hons) Linguistics and Translation with a Secondary Major in AIDA
+            *   BSc (Hons) in Language Sciences and Analytics with a Secondary Major in AIDA
+
+        *   Double Major in BA(Hons) in Linguistics and Translation and BA(Hons) in English and Applied Linguistics
+        *   GUR Subjects offered by LST
+            *   Cluster Area Requirements (CAR) Subjects
+            *   Service Learning (SL) Subjects
+
+    *   Research Postgraduate Programme
+        *   PhD or MPhil Study
+
+    *   Taught Postgraduate Programmes
+        *   MA Scheme in Chinese Linguistics and Translation
+            *   Bilingual Corporate Communication (MABCC)
+            *   Chinese Linguistics (MACL)
+            *   Chinese Language and Literature (MACLL/PgDCLL)
+            *   Teaching Chinese as a Foreign Language (MATCFL)
+            *   Translating and Interpreting (MATI)
+
+        *   Master of Speech Therapy (MST)
+        *   Master of Science in Generative AI and the Humanities (MScGAH)
+        *   Master of Arts in Global Communication and Event Hosting Arts
+
+    *   Work-Integrated Education
+        *   BALT WIE and Career Development
+        *   BScLSA WIE and Career Development
+
+    *   Learning and Teaching
+        *   Teaching Excellence
+        *   LST MOOCs
+
+*   Experience and Opportunities
+    *   Scholarships and Awards
+    *   Exchange Experience
+    *   Mentorship
+    *   Translation Society
+    *   The PolyU Chinese Debate Team
+
+*   Research
+    *   Research Directions
+    *   Major Research Facilities
+    *   Research Personnel Recruitment
+    *   Knowledge Transfer
+    *   Publications
+
+*   Centres and STU
+    *   Centre for Translation Studies (CTS)
+    *   Research Centre for Language, Cognition, and Neuroscience (RCLCN)
+    *   Speech Therapy Unit (STU)
+
+*   Facilities
+    *   SI Laboratories and Language Laboratories
+    *   Speech and Language Sciences Laboratories
+
+*   Latest News
+    *   News and Kudos
+    *   Events
+    *   Video Gallery
+    *   Photo Gallery
+
+*   About LST
+    *   Message from LST
+    *   Giving to LST
+    *   Contact Us
+    *   Job Opportunities
+
+*    People Open / close
+
+back 
+People
+
+    *   Academic Staff
+    *   Honorary and Adjunct Appointments
+    *   Research Personnel
+    *   Supporting Staff
+    *    Alumni Open / close menu
+        *   Events and Activities
+        *   Alumni Association
+        *   Outstanding Alumni Award
+        *   Mentorship Programme
+        *   Giving to LST
+
+*    Study Open / close
+
+back 
+Study
+
+    *   Undergraduate ProgrammesOpen / close menu
+        *   BSc (Hons) in Language Science and Technology
+        *   Bachelor of Science (Honours) in Speech Therapy
+        *   Bachelor of Arts (Honours) in Linguistics and Translation (Senior Year Admission)
+        *   Bachelor of Science (Honours) in Language Sciences and Analytics (Senior Year Admission)
+        *    Minor Programme Open / close menu
+            *   Linguistics and Translation
+            *   Japanese
+            *   Korean
+
+        *    Secondary Major Programme Open / close menu
+            *   BA (Hons) Linguistics and Translation with a Secondary Major in AIDA
+            *   BSc (Hons) in Language Sciences and Analytics with a Secondary Major in AIDA
+
+        *   Double Major in BA(Hons) in Linguistics and Translation and BA(Hons) in English and Applied Linguistics
+        *    GUR Subjects offered by LST Open / close menu
+            *   Cluster Area Requirements (CAR) Subjects
+            *   Service Learning (SL) Subjects
+
+    *   Research Postgraduate ProgrammeOpen / close menu
+        *   PhD or MPhil Study
+
+    *   Taught Postgraduate ProgrammesOpen / close menu
+        *   MA Scheme in Chinese Linguistics and TranslationOpen / close menu
+            *   Bilingual Corporate Communication (MABCC)
+            *   Chinese Linguistics (MACL)
+            *   Chinese Language and Literature (MACLL/PgDCLL)
+            *   Teaching Chinese as a Foreign Language (MATCFL)
+            *   Translating and Interpreting (MATI)
+
+        *   Master of Speech Therapy (MST)
+        *   Master of Science in Generative AI and the Humanities (MScGAH)
+        *   Master of Arts in Global Communication and Event Hosting Arts
+
+    *    Work-Integrated Education Open / close menu
+        *   BALT WIE and Career Development
+        *   BScLSA WIE and Career Development
+
+    *    Learning and Teaching Open / close menu
+        *   Teaching Excellence
+        *   LST MOOCs
+
+*    Experience and Opportunities Open / close
+
+back 
+Experience and Opportunities
+
+    *   Scholarships and Awards
+    *   Exchange Experience
+    *   Mentorship
+    *   Translation Society
+    *   The PolyU Chinese Debate Team
+
+*    Research Open / close
+
+back 
+Research
+
+    *   Research Directions
+    *   Major Research Facilities
+    *   Research Personnel Recruitment
+    *   Knowledge Transfer
+    *   Publications
+
+*    Centres and STU Open / close
+
+back 
+Centres and STU
+
+    *   Centre for Translation Studies (CTS)
+    *   Research Centre for Language, Cognition, and Neuroscience (RCLCN)
+    *   Speech Therapy Unit (STU)
+
+*    Facilities Open / close
+
+back 
+Facilities
+
+    *   SI Laboratories and Language Laboratories
+    *   Speech and Language Sciences Laboratories
+
+*    Latest News Open / close
+
+back 
+Latest News
+
+    *   News and Kudos
+    *   Events
+    *   Video Gallery
+    *   Photo Gallery
+
+*    About LST Open / close
+
+back 
+About LST
+
+    *   Message from LST
+    *   Giving to LST
+    *   Contact Us
+    *   Job Opportunities
+
+Student
+
+Staff
+
+Quick Access
+
+Start main content)
+
+1.    Home 
+2.    Study 
+3.   Taught Postgraduate Programmes
+4.   Master of Science in Generative AI and the Humanities (MScGAH)
+5.   Curriculum
+
+Master of Science in Generative AI and the Humanities (MScGAH)
+==============================================================
+
+!Image 6: MScGAH
+
+Menu
+
+Master of Science in Generative AI and the Humanities
+
+*   Master of Speech Therapy
+*   Master of Arts in Global Communication and Event Hosting Arts
+
+*   Introduction
+*   Overview
+*   Admission
+*   Curriculum
+*   En
