@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #b20155;
+    --primary-foreground: #fff;
+    --card: #fff;
+    --card-foreground: #3e3832;
+    --muted: rgba(62, 56, 50, 0.1);
+    --muted-foreground: rgba(62, 56, 50, 0.7);
+    --input: rgba(62, 56, 50, 0.2);
+    --border: rgba(62, 56, 50, 0.2);
+    --ring: #b20155;
+    --foreground: #3e3832;
+    --background: #f8fafc;
+  }
+
+  html {
+    font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+
+  body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+  }
+
+  * {
+    font-family: inherit;
+  }
+
+  .text-primary-foreground {
+    color: var(--primary-foreground);
+  }
+  
+  .bg-primary {
+    background-color: var(--primary);
+  }
+  
+  .bg-primary\/20 {
+    background-color: rgba(178, 1, 85, 0.2);
+  }
+  
+  .hover\:bg-primary\/90:hover {
+    background-color: rgba(178, 1, 85, 0.9);
+  }
+  
+  .focus\:ring-2:focus {
+    --tw-ring-color: rgba(178, 1, 85, 0.2);
+  }
+}
+
+@layer utilities {
+  .animate-in {
+    animation: animate-in 0.2s ease-out;
+  }
+  .fade-in {
+    animation: fade-in 0.2s ease-out;
+  }
+  .zoom-in-95 {
+    animation: zoom-in-95 0.2s ease-out;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoom-in-95 {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes animate-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+body {
+  color: #3e3832;
+  background: #f8fafc;
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
