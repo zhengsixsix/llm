@@ -37,6 +37,14 @@ export interface TranslationKeys {
   word1000: string;
   word1500: string;
   word2000: string;
+  detailLevel: string;
+  detailConcise: string;
+  detailStandard: string;
+  detailDetailed: string;
+  stylePreference: string;
+  styleAcademic: string;
+  styleCreative: string;
+  stylePractical: string;
 }
 
 export type Translations = {
@@ -81,6 +89,14 @@ export const translations: Translations = {
     word1000: '1000 words (Detailed)',
     word1500: '1500 words (In-depth)',
     word2000: '2000 words (Complete)',
+    detailLevel: 'Detail Level',
+    detailConcise: 'Concise',
+    detailStandard: 'Standard',
+    detailDetailed: 'Detailed',
+    stylePreference: 'Writing Style',
+    styleAcademic: 'Academic',
+    styleCreative: 'Creative Narrative',
+    stylePractical: 'Practical',
   },
   zh: {
     appName: 'PS Mind Map',
@@ -119,5 +135,13 @@ export const translations: Translations = {
     word1000: '1000 字（详细版）',
     word1500: '1500 字（深度版）',
     word2000: '2000 字（完整版）',
+    detailLevel: '详细程度',
+    detailConcise: '简洁',
+    detailStandard: '标准',
+    detailDetailed: '详细',
+    stylePreference: '写作风格',
+    styleAcademic: '学术严谨',
+    styleCreative: '创意叙事',
+    stylePractical: '实用简练',
   },
 };

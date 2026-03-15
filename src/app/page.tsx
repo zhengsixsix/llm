@@ -1,10 +1,15 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import MindMapViewer from '@/components/MindMapViewer';
+import NodeEditorPanel from '@/components/NodeEditorPanel';
+import HistoryDrawer from '@/components/HistoryDrawer';
 import type { MindMapData } from '@/types/mindmap';
+import { ensureNodeIds, updateNodeTitle } from '@/types/mindmap';
+import { withRetry } from '@/lib/utils/retry';
+import { saveRecord, bufferToBase64, base64ToBuffer, type HistoryRecord } from '@/lib/history';
 
 export default function Home() {
   const { t } = useLanguage();
@@ -12,12 +17,18 @@ export default function Home() {
   const [programName, setProgramName] = useState('');
   const [targetWords, setTargetWords] = useState('1000');
   const [isOpen, setIsOpen] = useState(false);
+  const [detailLevel, setDetailLevel] = useState(50);
+  const [stylePreference, setStylePreference] = useState(50);
   
   // New states for file upload and generation
   const [files, setFiles] = useState<File[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [mindMapData, setMindMapData] = useState<MindMapData | null>(null);
+  const [xmindBuffer, setXmindBuffer] = useState<ArrayBuffer | null>(null);
   const [error, setError] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
+  const [progressMsg, setProgressMsg] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [projectUrl, setProjectUrl] = useState('');
   const [curriculumUrl, setCurriculumUrl] = useState('');
   const [activitiesUrl, setActivitiesUrl] = useState('');
@@ -40,7 +51,10 @@ export default function Home() {
 
     setIsGenerating(true);
     setError('');
+    setRetryCount(0);
+    setProgressMsg('');
     setMindMapData(null);
+    setXmindBuffer(null);
 
     try {
       const formData = new FormData();
@@ -49,59 +63,138 @@ export default function Home() {
       formData.append('projectWebsite', projectUrl);
       formData.append('curriculumLink', curriculumUrl);
       formData.append('activitiesLink', activitiesUrl);
+      formData.append('detailLevel', String(detailLevel));
+      formData.append('stylePreference', String(stylePreference));
 
       // Add files
       files.forEach(file => {
         formData.append('files', file);
       });
 
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        body: formData,
-      });
+      // 带自动重试的 SSE 流式请求
+      const mapData = await withRetry(
+        () => consumeSSE(formData),
+        {
+          maxRetries: 2,
+          delay: 2000,
+          onRetry: (attempt) => setRetryCount(attempt),
+        },
+      );
 
-      const result = await response.json();
+      // 立即生成 .xmind 文件用于预览
+      setProgressMsg('正在生成 XMind 文件…');
+      try {
+        const xmindRes = await fetch('/api/generate-xmind', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ structure: mapData }),
+        });
+        if (xmindRes.ok) {
+          const blob = await xmindRes.blob();
+          const buffer = await blob.arrayBuffer();
+          setXmindBuffer(buffer);
 
-      if (!response.ok) {
-        throw new Error(result.error || '生成失败');
+          // 自动保存到历史记录
+          try {
+            saveRecord({
+              schoolName,
+              programName,
+              mindMapData: mapData,
+              xmindBase64: bufferToBase64(buffer),
+            });
+          } catch (e) {
+            console.warn('历史记录保存失败', e);
+          }
+        }
+      } catch (e) {
+        console.warn('XMind 预览文件生成失败', e);
       }
-
-      setMindMapData(result.data);
     } catch (err: any) {
       setError(err.message || '生成失败，请重试');
     } finally {
       setIsGenerating(false);
+      setRetryCount(0);
+      setProgressMsg('');
     }
   };
 
-  const handleDownloadXMind = async () => {
-    if (!mindMapData) return;
+  /** 消费 SSE 流，实时更新进度，返回最终 MindMapData */
+  const consumeSSE = async (formData: FormData): Promise<MindMapData> => {
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      body: formData,
+    });
 
-    try {
-      const response = await fetch('/api/generate-xmind', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ structure: mindMapData }),
-      });
-
-      if (!response.ok) {
-        throw new Error('下载失败');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'mindmap.xmind';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err) {
-      setError('下载失败，请重试');
+    // 验证失败时服务端返回普通 JSON
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || '生成失败');
     }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('无法读取响应流');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let resultData: any = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // 解析 SSE 事件
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ''; // 保留未完成的行
+
+      let currentEvent = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6);
+          try {
+            const payload = JSON.parse(jsonStr);
+            if (currentEvent === 'progress') {
+              setProgressMsg(payload.message || '');
+            } else if (currentEvent === 'result') {
+              resultData = payload;
+            } else if (currentEvent === 'error') {
+              throw new Error(payload.error || '生成失败');
+            }
+          } catch (e) {
+            if (e instanceof SyntaxError) continue; // 忽略 JSON 解析失败
+            throw e;
+          }
+        }
+      }
+    }
+
+    if (!resultData?.success) {
+      throw new Error('未收到有效结果');
+    }
+
+    const mapData: MindMapData = {
+      ...resultData.data,
+      structure: ensureNodeIds(resultData.data.structure),
+    };
+    setMindMapData(mapData);
+    return mapData;
+  };
+
+  const handleDownloadXMind = () => {
+    // 直接用已生成的 buffer 下载，无需重新请求
+    if (!xmindBuffer) return;
+    const blob = new Blob([xmindBuffer], { type: 'application/octet-stream' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mindmap.xmind';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,12 +220,47 @@ export default function Home() {
     e.preventDefault();
   };
 
+  // 更新单个节点后重新生成 xmind
+  const handleNodeUpdate = useCallback(async (nodeId: string, newTitle: string) => {
+    if (!mindMapData) return;
+    const newStructure = updateNodeTitle(mindMapData.structure, nodeId, newTitle);
+    const newData: MindMapData = { ...mindMapData, structure: newStructure };
+    setMindMapData(newData);
+
+    // 重新生成 xmind 文件
+    try {
+      const res = await fetch('/api/generate-xmind', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ structure: newData }),
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        setXmindBuffer(await blob.arrayBuffer());
+      }
+    } catch (e) {
+      console.warn('XMind 重新生成失败', e);
+    }
+  }, [mindMapData]);
+
+  const handleLoadHistory = (record: HistoryRecord) => {
+    setSchoolName(record.schoolName);
+    setProgramName(record.programName);
+    setMindMapData(record.mindMapData);
+    setXmindBuffer(base64ToBuffer(record.xmindBase64));
+    setError('');
+    setHistoryOpen(false);
+  };
+
   const handleReset = () => {
     setSchoolName('');
     setProgramName('');
     setTargetWords('1000');
     setFiles([]);
+    setDetailLevel(50);
+    setStylePreference(50);
     setMindMapData(null);
+    setXmindBuffer(null);
     setError('');
     setProjectUrl('');
     setCurriculumUrl('');
@@ -174,7 +302,7 @@ export default function Home() {
           </div>
 
           {/* Form */}
-          <form className="flex-1 flex flex-col overflow-hidden" onSubmit={(e) => { e.preventDefault(); handleGenerate(); }}>
+          <form className="flex-1 flex flex-col overflow-hidden" onSubmit={(e) => e.preventDefault()}>
             <div className="px-6 flex-1 overflow-y-auto space-y-4">
 
               {/* School & Program */}
@@ -247,6 +375,57 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* Quality Control */}
+              <div className="space-y-4 pt-4 border-t border-[rgba(62,56,50,0.2)]">
+                {/* 详细程度 */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm leading-none font-medium select-none text-[#3e3832]">{t.detailLevel}</label>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#b20155]/10 text-[#b20155] font-medium">
+                      {detailLevel <= 30 ? t.detailConcise : detailLevel >= 70 ? t.detailDetailed : t.detailStandard}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={detailLevel}
+                    onChange={(e) => setDetailLevel(Number(e.target.value))}
+                    className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-[rgba(62,56,50,0.12)] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#b20155] [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-shadow [&::-webkit-slider-thumb]:hover:shadow-lg"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#3e3832] opacity-40">
+                    <span>{t.detailConcise}</span>
+                    <span>{t.detailStandard}</span>
+                    <span>{t.detailDetailed}</span>
+                  </div>
+                </div>
+
+                {/* 写作风格 */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm leading-none font-medium select-none text-[#3e3832]">{t.stylePreference}</label>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#b20155]/10 text-[#b20155] font-medium">
+                      {stylePreference <= 30 ? t.styleAcademic : stylePreference >= 70 ? t.stylePractical : t.styleCreative}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={stylePreference}
+                    onChange={(e) => setStylePreference(Number(e.target.value))}
+                    className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-[rgba(62,56,50,0.12)] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#b20155] [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-shadow [&::-webkit-slider-thumb]:hover:shadow-lg"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#3e3832] opacity-40">
+                    <span>{t.styleAcademic}</span>
+                    <span>{t.styleCreative}</span>
+                    <span>{t.stylePractical}</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Reference Links */}
               <div className="space-y-4 pt-4 border-t border-[rgba(62,56,50,0.2)]">
                 <div className="flex items-center gap-2 text-sm text-[#3e3832] opacity-70">
@@ -291,19 +470,20 @@ export default function Home() {
               </div>
 
               {/* Upload Box */}
-              <div 
+              <div
                 className="flex flex-col gap-4 rounded-xl py-4 cursor-pointer transition-all duration-300 ease-in-out bg-white/35 border-2 border-dashed border-[rgba(62,56,50,0.2)] hover:bg-[#b20155]/5 hover:border-[#b20155]/40"
                 onClick={() => fileInputRef.current?.click()}
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
+                onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDrop(e); }}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
               >
                 <input
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept=".txt,.md,.docx,.xmind"
+                  accept=".txt,.md,.docx,.xmind,.pdf"
                   onChange={handleFileChange}
-                  className="hidden"
+                  className="sr-only"
                 />
                 {files.length > 0 ? (
                   <div className="px-4 space-y-2">
@@ -312,7 +492,7 @@ export default function Home() {
                         <span className="text-sm text-[#3e3832] truncate max-w-[200px]">{file.name}</span>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); removeFile(index); }}
+                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); removeFile(index); }}
                           className="text-[#3e3832] opacity-50 hover:opacity-100"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
@@ -378,8 +558,15 @@ export default function Home() {
               
               {/* Error Message */}
               {error && (
-                <div className="text-red-500 text-sm p-2 bg-red-50 rounded-md">
-                  {error}
+                <div className="text-red-500 text-sm p-3 bg-red-50 rounded-md flex items-center justify-between gap-2">
+                  <span>{error}</span>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="flex-shrink-0 text-xs px-3 py-1 rounded bg-red-100 text-red-600 hover:bg-red-200 transition-colors font-medium"
+                  >
+                    重试
+                  </button>
                 </div>
               )}
             </div>
@@ -387,7 +574,7 @@ export default function Home() {
             {/* Buttons */}
             <div className="flex-shrink-0 p-4 border-t border-[rgba(62,56,50,0.2)] bg-[rgba(62,56,50,0.03)]">
               <div className="flex gap-2">
-                {mindMapData ? (
+                {xmindBuffer ? (
                   <button
                     type="button"
                     onClick={handleDownloadXMind}
@@ -402,8 +589,9 @@ export default function Home() {
                   </button>
                 ) : (
                   <button
-                    type="submit"
+                    type="button"
                     disabled={isGenerating}
+                    onClick={handleGenerate}
                     className="flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-primary text-primary-foreground hover:bg-primary/90 h-10 rounded-md px-6 has-[>svg]:px-4"
                   >
                     {isGenerating ? (
@@ -448,6 +636,13 @@ export default function Home() {
             {t.systemRunning}
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="text-xs px-3 py-1.5 rounded-md border border-[rgba(62,56,50,0.2)] text-[#3e3832] hover:bg-gray-100 transition-colors flex items-center gap-1.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              历史记录
+            </button>
             <LanguageSwitcher />
             <div className="w-8 h-8 rounded-full bg-[rgba(62,56,50,0.2)] border-2 border-white shadow-sm"></div>
           </div>
@@ -457,8 +652,25 @@ export default function Home() {
         <div className="flex-1 overflow-hidden relative">
           <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50 pointer-events-none"></div>
 
-          {mindMapData ? (
-            <MindMapViewer data={mindMapData} />
+          {xmindBuffer ? (
+            <>
+              <MindMapViewer file={xmindBuffer} />
+              {mindMapData && (
+                <NodeEditorPanel data={mindMapData} onUpdateNode={handleNodeUpdate} />
+              )}
+            </>
+          ) : isGenerating ? (
+            <div className="h-full flex flex-col items-center justify-center text-[#3e3832] p-8">
+              <svg className="w-10 h-10 animate-spin text-[#b20155]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <p className="mt-4 text-sm text-[#3e3832] opacity-60">
+                {retryCount > 0
+                  ? `第 ${retryCount} 次重试中，请稍候…`
+                  : progressMsg || '正在生成思维导图，请稍候…'}
+              </p>
+            </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-[#3e3832] p-8">
               <div className="relative">
@@ -487,6 +699,8 @@ export default function Home() {
           )}
         </div>
       </div>
+      {/* History Drawer */}
+      <HistoryDrawer open={historyOpen} onClose={() => setHistoryOpen(false)} onLoad={handleLoadHistory} />
     </main>
   );
 }

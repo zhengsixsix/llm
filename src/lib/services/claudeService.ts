@@ -13,6 +13,10 @@ interface ApplicationData {
   websiteContent: string;
   userMaterials: string;
   sampleContent?: string;
+  /** 0-100，0=简洁 50=标准 100=详细 */
+  detailLevel?: number;
+  /** 0-100，0=学术 50=创意 100=实用 */
+  stylePreference?: number;
 }
 
 class ClaudeService {
@@ -27,18 +31,24 @@ class ClaudeService {
     });
   }
 
-  async generateApplicationMindMap(applicationData: ApplicationData): Promise<MindMapData> {
+  async generateApplicationMindMap(
+    applicationData: ApplicationData,
+    onProgress?: (charCount: number) => void,
+  ): Promise<MindMapData> {
     try {
       console.log('[INFO] 使用单次请求生成完整思维导图...');
-      return await this.generateCompleteStructure(applicationData);
+      return await this.generateCompleteStructure(applicationData, onProgress);
     } catch (error) {
       console.error('[ERROR] 生成失败:', error instanceof Error ? error.message : '未知错误');
       throw error;
     }
   }
 
-  private async generateCompleteStructure(applicationData: ApplicationData): Promise<MindMapData> {
-    const { schoolName, programName, websiteContent, userMaterials, sampleContent } = applicationData;
+  private async generateCompleteStructure(
+    applicationData: ApplicationData,
+    onProgress?: (charCount: number) => void,
+  ): Promise<MindMapData> {
+    const { schoolName, programName, websiteContent, userMaterials, sampleContent, detailLevel = 50, stylePreference = 50 } = applicationData;
 
     const targetParts = [];
     if (schoolName) targetParts.push(schoolName);
@@ -48,6 +58,31 @@ class ClaudeService {
     const sampleSection = sampleContent
       ? `\n## 【最高优先级】参考样例\n以下是用户提供的真实样例。**你必须模仿样例的语气、表达风格、句式习惯和措辞方式**，不要用"模板腔"或"申请文书套话"。样例里怎么说话，你就怎么说话。结构层次和内容深度也以样例为准。\n\n${sampleContent}\n`
       : '';
+
+    // 根据 0-100 连续值生成详细程度指令
+    const minWords = Math.round(60 + (detailLevel / 100) * 140); // 60~200
+    const nodesPerSection = detailLevel <= 30 ? '2-3' : detailLevel >= 70 ? '4-6' : '3-4';
+    const detailHint = detailLevel <= 20
+      ? '语言极度精炼，只保留核心要点'
+      : detailLevel >= 80
+      ? '包含具体数据、时间线、项目名称等尽可能多的细节'
+      : '保持适当的细节层次';
+    const detailSection = `\n### 详细程度（${detailLevel}/100）\n正文节点至少 ${minWords} 字。每个板块 ${nodesPerSection} 个正文节点。${detailHint}。`;
+
+    // 根据 0-100 连续值生成风格指令
+    let styleSection = '';
+    if (stylePreference <= 25) {
+      styleSection = '\n### 写作风格：学术严谨\n使用正式学术语言，多引用学术概念和理论框架，体现研究能力和学术深度。避免口语化表达。';
+    } else if (stylePreference >= 75) {
+      styleSection = '\n### 写作风格：实用简练\n直接切入重点，每句话都有明确目的。使用短句，避免修辞性语言，突出行动和成果。';
+    } else if (stylePreference <= 40) {
+      styleSection = '\n### 写作风格\n偏学术风格，但保持一定的叙事性，用较正式的语言表达。';
+    } else if (stylePreference >= 60) {
+      styleSection = '\n### 写作风格\n偏实用风格，语言简洁明快，但仍保持一定的叙事性和感染力。';
+    }
+    // 40-60 区间不添加额外风格指令，使用默认创意叙事风格
+
+    const qualitySection = detailSection + styleSection;
 
     const prompt = `请根据以下材料，生成申请文书思维导图的完整 JSON 数据。
 ${sampleSection}
@@ -93,8 +128,13 @@ ${userMaterials}
 ### 节点ID
 每个节点必须有唯一的id，使用UUID格式。
 
-### 关联线（如有需要）
-根据正文内容自主判断是否需要添加跨板块的逻辑关联线。
+### 关联线
+寻找不同板块之间内容上有呼应、因果、递进关系的节点，用关联线连接它们。不要保守，只要两个节点存在逻辑关联就应该加关联线。常见场景举例：
+- 兴趣起源的经历 ↔ 能力匹配的项目（同一故事不同角度）
+- 进阶思考的研究方向 ↔ 心仪课程的某门课（学术兴趣和课程匹配）
+- 能力匹配的成果 ↔ 衷心求学的未来规划（能力与愿景衔接）
+- 兴趣起源 ↔ 衷心求学（初心与终点呼应）
+每条关联线的 end1Title / end2Title 必须是 structure 中实际存在的节点 title（取前 20 字即可）。
 
 ### 五大板块结构（固定不变）
 1. 兴趣起源 - 用故事+吹牛+少量学术点缀
@@ -113,8 +153,12 @@ ${userMaterials}
     {"title": "心仪课程", "type": "content", "id": "UUID", "children": []},
     {"title": "衷心求学", "type": "content", "id": "UUID", "children": []}
   ],
-  "relationships": []
+  "relationships": [
+    {"title": "关联说明", "end1Title": "节点A的title前20字", "end2Title": "节点B的title前20字"}
+  ]
 }
+
+${qualitySection}
 
 只输出 JSON，不输出任何其他内容。`;
 
@@ -134,6 +178,7 @@ ${userMaterials}
     stream.on('text', (text) => {
       fullText += text;
       process.stdout.write('.');
+      onProgress?.(fullText.length);
     });
 
     await stream.done();
