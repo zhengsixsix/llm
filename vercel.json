@@ -1,0 +1,17 @@
+{
+  "buildCommand": "pnpm install && pnpm build",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "regions": ["hkg1"],
+  "env": {
+    "NEXTJS_ENV": "production"
+  },
+  "functions": {
+    "src/app/api/generate/init/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/generate-xmind/route.ts": {
+      "maxDuration": 300
+    }
+  }
+}

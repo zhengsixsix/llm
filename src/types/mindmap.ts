@@ -17,9 +17,13 @@ export interface MindMapNode {
 
 /** 关联线 */
 export interface Relationship {
+  id?: string;
   title: string;
   end1Title: string;
   end2Title: string;
+  end1Board?: string;
+  end2Board?: string;
+  linePattern?: string;
 }
 
 /** 思维导图数据 */

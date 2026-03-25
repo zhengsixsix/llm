@@ -9,7 +9,7 @@ class WebScraperService {
     return new Promise((resolve, reject) => {
       const apiUrl = `https://r.jina.ai/${encodeURIComponent(url)}`;
 
-      https.get(apiUrl, (res) => {
+      const req = https.get(apiUrl, (res) => {
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
@@ -30,15 +30,37 @@ class WebScraperService {
             reject(e);
           }
         });
-      }).on('error', reject);
+      });
+
+      req.on('error', reject);
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error(`请求超时: ${url}`));
+      });
     });
   }
 
-  async fetchMultipleUrls(urls: string[]): Promise<string> {
-    const contents = await Promise.all(
-      urls.filter(url => url).map(url => this.fetchWebContent(url).catch(() => ''))
-    );
-    return contents.join('\n\n');
+  async fetchMultipleUrls(urls: string[], timeoutMs = 10000): Promise<string> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const results = await Promise.allSettled(
+        urls.filter(url => url).map(async (url) => {
+          try {
+            return await this.fetchWebContent(url);
+          } catch {
+            return '';
+          }
+        })
+      );
+      return results
+        .filter(r => r.status === 'fulfilled')
+        .map(r => (r as PromiseFulfilledResult<string>).value)
+        .join('\n\n');
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }
 

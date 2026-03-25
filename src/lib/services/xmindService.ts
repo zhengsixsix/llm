@@ -3,19 +3,15 @@
  */
 
 import { Workbook, RootTopic, Topic, Relationship, Summary } from 'xmind-generator';
-import { writeFile } from 'fs/promises';
-import path from 'path';
-import fs from 'fs';
 import https from 'https';
 import http from 'http';
-import os from 'os';
 import type { MindMapData, MindMapNode } from '@/types/mindmap';
 import { imageSearchService } from './imageSearchService';
 
 class XMindService {
   private titleToRefMap: Record<string, string> = {};
 
-  async generateXMind(structure: MindMapData, outputPath: string): Promise<void> {
+  async generateXMind(structure: MindMapData): Promise<ArrayBuffer> {
     const rootTitle = structure.rootTitle || '申请文书思维导图';
     const relationships = structure.relationships || [];
 
@@ -30,19 +26,13 @@ class XMindService {
         .relationships(this.buildRelationships(relationships) as any)
     );
 
-    const absPath = path.resolve(outputPath);
-    const outputDir = path.dirname(absPath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
     const buffer = await workbook.archive();
     if (!buffer || !(buffer instanceof ArrayBuffer)) {
       throw new Error('XMind 生成失败: archive() 未返回有效数据');
     }
-    await writeFile(absPath, Buffer.from(buffer));
 
-    console.log(`[SUCCESS] XMind 文件已生成: ${absPath}`);
+    console.log(`[SUCCESS] XMind 文件已生成，体积 ${buffer.byteLength} bytes`);
+    return buffer;
   }
 
   private async buildStructure(structureData: MindMapNode[]): Promise<any[]> {
@@ -136,7 +126,7 @@ class XMindService {
         const imageRef = this.generateRef(imageTitle);
         this.titleToRefMap[imageTitle] = imageRef;
         const imageTopic = Topic(imageTitle).ref(imageRef);
-        await this.attachImage(imageTopic, node.imageKeyword);
+        await this.attachImage(imageTopic, node.imageKeyword!);
 
         if (Array.isArray(node.children) && node.children.length > 0) {
           const result = await this.buildChildrenWithSummary(node.children);
@@ -150,7 +140,7 @@ class XMindService {
         const topicRef = this.generateRef(node.title);
         this.titleToRefMap[node.title] = topicRef;
         const topic = Topic(node.title).ref(topicRef);
-        await this.attachImage(topic, node.imageKeyword);
+        await this.attachImage(topic, node.imageKeyword!);
 
         if (Array.isArray(node.children) && node.children.length > 0) {
           const result = await this.buildChildrenWithSummary(node.children);
@@ -218,33 +208,27 @@ class XMindService {
       }
 
       const ext = this.getExtFromUrl(imageUrl);
-      const tmpPath = path.join(os.tmpdir(), `xmind_img_${Date.now()}.${ext}`);
-      await this.downloadFile(imageUrl, tmpPath);
-
-      const imgBuffer = fs.readFileSync(tmpPath);
+      const imgBuffer = await this.fetchBuffer(imageUrl);
       topic.image({ data: imgBuffer, name: `image.${ext}` });
-
-      fs.unlinkSync(tmpPath);
       console.log(`[SUCCESS] 图片嵌入成功: ${keyword}`);
     } catch (e) {
       console.warn(`[WARN] 图片嵌入失败 (${keyword})`);
     }
   }
 
-  private downloadFile(url: string, destPath: string): Promise<void> {
+  private fetchBuffer(url: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const proto = url.startsWith('https') ? https : http;
-      const file = fs.createWriteStream(destPath);
+      const chunks: Buffer[] = [];
 
       proto.get(url, (res) => {
         if (res.statusCode === 301 || res.statusCode === 302) {
-          file.close();
-          this.downloadFile(res.headers.location!, destPath).then(resolve).catch(reject);
+          this.fetchBuffer(res.headers.location!).then(resolve).catch(reject);
           return;
         }
-        res.pipe(file);
-        file.on('finish', () => file.close(() => resolve()));
-        file.on('error', reject);
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => resolve(Buffer.concat(chunks)));
+        res.on('error', reject);
       }).on('error', reject);
     });
   }

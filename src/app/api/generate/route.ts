@@ -96,8 +96,8 @@ export async function POST(request: NextRequest) {
 
         const structure = await claudeService.generateApplicationMindMap(
           { schoolName, programName, websiteContent, userMaterials, sampleContent, detailLevel, stylePreference },
-          (charCount) => {
-            send('progress', { stage: 'generating', message: `AI 生成中（已接收 ${charCount} 字）`, charCount });
+          (step, charCount) => {
+            send('progress', { stage: step, message: `AI 生成中（${step} - ${charCount} 字）`, charCount });
           },
         );
 

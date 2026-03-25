@@ -8,7 +8,6 @@ import NodeEditorPanel from '@/components/NodeEditorPanel';
 import HistoryDrawer from '@/components/HistoryDrawer';
 import type { MindMapData } from '@/types/mindmap';
 import { ensureNodeIds, updateNodeTitle } from '@/types/mindmap';
-import { withRetry } from '@/lib/utils/retry';
 import { saveRecord, bufferToBase64, base64ToBuffer, type HistoryRecord } from '@/lib/history';
 
 export default function Home() {
@@ -28,6 +27,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [retryCount, setRetryCount] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
+  const [currentJobId, setCurrentJobId] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [projectUrl, setProjectUrl] = useState('');
   const [curriculumUrl, setCurriculumUrl] = useState('');
@@ -65,50 +65,34 @@ export default function Home() {
       formData.append('activitiesLink', activitiesUrl);
       formData.append('detailLevel', String(detailLevel));
       formData.append('stylePreference', String(stylePreference));
+      // retry 时带上已有 jobId，后端会从 checkpoint 继续而不是重新开始
+      if (currentJobId) {
+        formData.append('jobId', currentJobId);
+      }
 
-      // Add files
       files.forEach(file => {
         formData.append('files', file);
       });
 
-      // 带自动重试的 SSE 流式请求
-      const mapData = await withRetry(
-        () => consumeSSE(formData),
-        {
-          maxRetries: 2,
-          delay: 2000,
-          onRetry: (attempt) => setRetryCount(attempt),
-        },
-      );
+      // Step 1: 提交任务，立即返回 jobId
+      setProgressMsg('正在提交任务…');
+      const initRes = await fetch('/api/generate/init', {
+        method: 'POST',
+        body: formData,
+      });
 
-      // 立即生成 .xmind 文件用于预览
-      setProgressMsg('正在生成 XMind 文件…');
-      try {
-        const xmindRes = await fetch('/api/generate-xmind', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ structure: mapData }),
-        });
-        if (xmindRes.ok) {
-          const blob = await xmindRes.blob();
-          const buffer = await blob.arrayBuffer();
-          setXmindBuffer(buffer);
-
-          // 自动保存到历史记录
-          try {
-            saveRecord({
-              schoolName,
-              programName,
-              mindMapData: mapData,
-              xmindBase64: bufferToBase64(buffer),
-            });
-          } catch (e) {
-            console.warn('历史记录保存失败', e);
-          }
-        }
-      } catch (e) {
-        console.warn('XMind 预览文件生成失败', e);
+      if (!initRes.ok) {
+        const data = await initRes.json();
+        throw new Error(data.error || '任务提交失败');
       }
+
+      const { jobId } = await initRes.json();
+      setCurrentJobId(jobId);
+
+      // Step 2: 轮询任务状态
+      setProgressMsg('等待 AI 生成中…');
+      await pollJobStatus(jobId);
+
     } catch (err: any) {
       setError(err.message || '生成失败，请重试');
     } finally {
@@ -118,69 +102,67 @@ export default function Home() {
     }
   };
 
-  /** 消费 SSE 流，实时更新进度，返回最终 MindMapData */
-  const consumeSSE = async (formData: FormData): Promise<MindMapData> => {
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      body: formData,
-    });
-
-    // 验证失败时服务端返回普通 JSON
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || '生成失败');
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error('无法读取响应流');
-
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let resultData: any = null;
-
+  /** 轮询 job 状态直到完成/失败 */
+  const pollJobStatus = async (jobId: string): Promise<void> => {
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      buffer += decoder.decode(value, { stream: true });
+      const res = await fetch(`/api/generate/init?jobId=${jobId}`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '查询任务状态失败');
+      }
 
-      // 解析 SSE 事件
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // 保留未完成的行
+      const { status, progress, result, error } = await res.json();
 
-      let currentEvent = '';
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          currentEvent = line.slice(7).trim();
-        } else if (line.startsWith('data: ')) {
-          const jsonStr = line.slice(6);
+      if (status === 'processing' || status === 'pending') {
+        setProgressMsg(progress || 'AI 生成中…');
+      } else if (status === 'completed') {
+        setCurrentJobId(''); // 完成或出错后清空，下次重试会创建新 jobId
+        const mapData: MindMapData = {
+          ...result,
+          structure: ensureNodeIds(result.structure),
+        };
+        setMindMapData(mapData);
+
+        // 生成 xmind 文件（允许失败，不阻塞预览）
+        setProgressMsg('正在生成 XMind 文件…');
+        for (let attempt = 1; attempt <= 3; attempt++) {
           try {
-            const payload = JSON.parse(jsonStr);
-            if (currentEvent === 'progress') {
-              setProgressMsg(payload.message || '');
-            } else if (currentEvent === 'result') {
-              resultData = payload;
-            } else if (currentEvent === 'error') {
-              throw new Error(payload.error || '生成失败');
+            const xmindRes = await fetch('/api/generate-xmind', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ structure: mapData }),
+            });
+            if (!xmindRes.ok) {
+              const errText = await xmindRes.text();
+              throw new Error(`HTTP ${xmindRes.status}: ${errText}`);
             }
+            const blob = await xmindRes.blob();
+            const buffer = await blob.arrayBuffer();
+            setXmindBuffer(buffer);
+            try {
+              saveRecord({
+                schoolName,
+                programName,
+                mindMapData: mapData,
+                xmindBase64: bufferToBase64(buffer),
+              });
+            } catch (e) {
+              console.warn('历史记录保存失败', e);
+            }
+            break; // 成功就跳出
           } catch (e) {
-            if (e instanceof SyntaxError) continue; // 忽略 JSON 解析失败
-            throw e;
+            console.warn(`XMind 生成失败 (第${attempt}次):`, e);
+            if (attempt < 3) await new Promise(r => setTimeout(r, 2000));
           }
         }
+        break;
+
+      } else if (status === 'error') {
+        throw new Error(error || '生成失败');
       }
     }
-
-    if (!resultData?.success) {
-      throw new Error('未收到有效结果');
-    }
-
-    const mapData: MindMapData = {
-      ...resultData.data,
-      structure: ensureNodeIds(resultData.data.structure),
-    };
-    setMindMapData(mapData);
-    return mapData;
   };
 
   const handleDownloadXMind = () => {
@@ -288,7 +270,7 @@ export default function Home() {
                 </div>
                 <p className="text-[#3e3832] opacity-70 text-sm mt-1">{t.appSubtitle}</p>
               </div>
-              <span className="inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden border-transparent bg-primary text-primary-foreground [&a]:hover:bg-primary/90 flex-shrink-0">
+              <span className="inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden border-transparent bg-primary text-primary-foreground hover:bg-pink-700 flex-shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1"><path d="M21.801 10A10 10 0 1 1 17 3.335"></path><path d="m9 11 3 3L22 4"></path></svg>
                 {t.remainingUses}
               </span>
