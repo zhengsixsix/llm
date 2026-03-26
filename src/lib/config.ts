@@ -1,6 +1,6 @@
 /**
  * 应用配置
- * 在 .env.local.local 文件中配置以下环境变量
+ * 在 .env.local 文件中配置以下环境变量
  */
 
 import type { AppConfig } from '@/types/config';

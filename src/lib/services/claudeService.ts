@@ -172,7 +172,7 @@ class ClaudeService {
      */
     private _buildOverviewPrompt(targetProjectName: string, websiteContent: string, userMaterials: string, sampleContent?: string): string {
         const sampleSection = sampleContent
-            ? `\n## 【最高优先级】参考样例\n以下是用户提供的真实样例。**你必须模仿样例的语气、表达风格、句式习惯和措辞方式**。\n\n${sampleContent}\n`
+            ? `\n## 【最高优先级】参考样例\n以下是用户提供的真实样例。**你必须模价样例的语气、表达风格、句式习惯和措辞方式**。\n\n${sampleContent}\n`
             : '';
 
         return `请根据以下材料，规划申请文书思维导图的五大板块结构。
@@ -229,11 +229,11 @@ ${userMaterials}
 
         const writingGuide = boardInfo?.writingGuide || this._getDefaultWritingGuide(boardName);
         const keyPoints = boardInfo?.keyPoints || [];
-        const targetLength = boardInfo?.targetLength || '500-800字';
 
         // 根据详细程度生成字数要求
         const minWords = Math.round(60 + (detailLevel / 100) * 140);
         const nodesPerSection = detailLevel <= 30 ? '2-3' : detailLevel >= 70 ? '4-6' : '3-4';
+        const targetLength = boardInfo?.targetLength || '500-800字';
 
         // 根据风格偏好生成风格指令
         let styleInstruction = '';

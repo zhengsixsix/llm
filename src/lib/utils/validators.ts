@@ -25,13 +25,3 @@ export function validateUrl(url: string | null | undefined, fieldName: string): 
     }
   }
 }
-
-/**
- * 验证目标字数选项
- */
-export function validateTargetWords(value: string | null | undefined): void {
-  const validOptions = ['500', '750', '1000', '1500', '2000'];
-  if (value && !validOptions.includes(value)) {
-    throw new ValidationError('目标字数选项无效');
-  }
-}

@@ -154,6 +154,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // 用户未上传样例时，读取本地默认样例
+  if (!sampleContent) {
+    sampleContent = await sampleService.getDefaultSampleContent();
+  }
+
   let userMaterials = '';
   if (files.length > 0) {
     try {
@@ -191,8 +196,19 @@ export async function POST(request: NextRequest) {
     return json({ success: false, error: '任务存储服务异常，请检查 Redis 环境变量配置' }, 503);
   }
 
-  // QStash 投递（无 QStash 时直接运行）
-  await enqueueJob(jobId);
+  // QStash 投递（无 QStash 时用 waitUntil 后台执行，不阻塞请求）
+  if (!isQStashConfigured() || !process.env.QSTASH_WEBHOOK_URL) {
+    // 立即返回，AI 放到后台跑（不阻塞请求）
+    const { waitUntil } = request as NextRequest & { waitUntil?: (p: Promise<void>) => void };
+    if (waitUntil) {
+      waitUntil(runProcessJob(jobId));
+    } else {
+      // 本地开发兜底：Promise 不 await 就触发
+      runProcessJob(jobId).catch((err) => console.error('[ERROR] 后台任务异常:', err));
+    }
+  } else {
+    await enqueueJob(jobId);
+  }
 
   return json({ success: true, jobId });
 }

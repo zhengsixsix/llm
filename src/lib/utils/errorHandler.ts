@@ -18,18 +18,3 @@ export class ValidationError extends AppError {
     super(message, 400);
   }
 }
-
-export class NotFoundError extends AppError {
-  constructor(message: string) {
-    super(message, 404);
-  }
-}
-
-export function handleServiceError(error: unknown): AppError {
-  if (error instanceof AppError) {
-    return error;
-  }
-  
-  const message = error instanceof Error ? error.message : '未知错误';
-  return new AppError(message, 500);
-}

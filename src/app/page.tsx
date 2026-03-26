@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { useLanguage } from '@/hooks/useLanguage';
+import { useLanguage } from '@/hooks';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import MindMapViewer from '@/components/MindMapViewer';
 import NodeEditorPanel from '@/components/NodeEditorPanel';
@@ -631,7 +631,7 @@ export default function Home() {
         </div>
 
         {/* Mind Map Area */}
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-auto relative">
           <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50 pointer-events-none"></div>
 
           {xmindBuffer ? (
