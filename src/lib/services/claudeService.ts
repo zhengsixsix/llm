@@ -4,9 +4,9 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import {jsonrepair} from 'jsonrepair';
-import {config} from '@/lib/config';
-import type {MindMapData, MindMapNode, Relationship} from '@/types/mindmap';
+import { jsonrepair } from 'jsonrepair';
+import { config } from '@/lib/config';
+import type { MindMapData, MindMapNode, Relationship } from '@/types/mindmap';
 
 interface ApplicationData {
     schoolName: string;
@@ -18,6 +18,8 @@ interface ApplicationData {
     detailLevel?: number;
     /** 0-100，0=学术 50=创意 100=实用 */
     stylePreference?: number;
+    /** 目标总字数（正文+解释+总结合计），如 500/750/1000/1500/2000 */
+    targetWords?: number;
 }
 
 interface BoardResult {
@@ -104,7 +106,7 @@ class ClaudeService {
                 systemPrompt: `你是一个专业的留学申请文书规划师。
 你的任务是根据申请材料和样例，规划出五大板块的整体结构和写作方向。
 你只输出JSON，不输出任何解释、标记或代码块。`,
-                userPrompt: this._buildOverviewPrompt(targetProjectName, websiteContent, userMaterials, sampleContent),
+                userPrompt: this._buildOverviewPrompt(targetProjectName, websiteContent, userMaterials, sampleContent, applicationData.targetWords),
                 onProgress: (count) => onProgress?.('总览AI', count)
             });
             await onCheckpoint?.({ step: 1, overview });
@@ -119,16 +121,22 @@ class ClaudeService {
         } else {
             await onCheckpoint?.({ step: 1, overview, boardResults: [], reviewResults: [], relationships: [] });
             const boardNames = ['兴趣起源', '进阶思考', '能力匹配', '心仪课程', '衷心求学'];
+            const targetWords = applicationData.targetWords || 1000;
+            const BOARD_RATIOS: Record<string, number> = {
+                '兴趣起源': 0.25, '进阶思考': 0.25, '能力匹配': 0.25,
+                '心仪课程': 0.15, '衷心求学': 0.10,
+            };
             onProgress?.('板块生成', 0);
             boardResults = await Promise.all(
-                boardNames.map((boardName, index) =>
-                    this._generateBoardContent(
+                boardNames.map((boardName, index) => {
+                    const perBoardLimit = Math.round(targetWords * (BOARD_RATIOS[boardName] ?? 0.20));
+                    return this._generateBoardContent(
                         boardName, index + 1,
                         overview as { structure?: Array<{ title: string; id: string; writingGuide: string; keyPoints: string[]; targetLength: string }> },
                         applicationData,
                         (count) => onProgress?.(`板块:${boardName}`, count)
-                    )
-                )
+                    );
+                })
             );
             await onCheckpoint?.({ step: 2, overview, boardResults });
             console.log('[INFO] 板块生成完成，已保存 checkpoint');
@@ -170,10 +178,22 @@ class ClaudeService {
     /**
      * 构建总览AI的prompt
      */
-    private _buildOverviewPrompt(targetProjectName: string, websiteContent: string, userMaterials: string, sampleContent?: string): string {
+    private _buildOverviewPrompt(targetProjectName: string, websiteContent: string, userMaterials: string, sampleContent?: string, targetWords?: number): string {
         const sampleSection = sampleContent
             ? `\n## 【最高优先级】参考样例\n以下是用户提供的真实样例。**你必须模价样例的语气、表达风格、句式习惯和措辞方式**。\n\n${sampleContent}\n`
             : '';
+
+        const tw = targetWords || 1000;
+        const boardLimits = {
+            '兴趣起源': Math.round(tw * 0.25),
+            '进阶思考': Math.round(tw * 0.25),
+            '能力匹配': Math.round(tw * 0.25),
+            '心仪课程': Math.round(tw * 0.15),
+            '衷心求学': Math.round(tw * 0.10),
+        };
+        const wordConstraint = `\n## 字数分配要求
+总目标字数：${tw}字。各板块分配：兴趣起源 ${boardLimits['兴趣起源']}字、进阶思考 ${boardLimits['进阶思考']}字、能力匹配 ${boardLimits['能力匹配']}字、心仪课程 ${boardLimits['心仪课程']}字、衷心求学 ${boardLimits['衷心求学']}字。
+targetLength 字段按上述对应板块的字数设置。`;
 
         return `请根据以下材料，规划申请文书思维导图的五大板块结构。
 
@@ -183,6 +203,7 @@ ${websiteContent}
 
 ## 申请人背景材料
 ${userMaterials}
+${wordConstraint}
 
 ## 任务
 生成一个整体结构规划，包含：
@@ -192,7 +213,7 @@ ${userMaterials}
    - id: UUID
    - writingGuide: 写作指导（告诉板块AI这个板块要写什么、怎么写、避免什么）
    - keyPoints: 3-5个核心要点（这个板块必须涵盖的关键信息）
-   - targetLength: 目标字数范围
+   - targetLength: 目标字数（按字数分配填写对应板块的字数限制）
 3. overallLogic: 整体逻辑（描述五大板块如何串联，形成完整叙事）
 
 ## 输出JSON格式
@@ -224,16 +245,27 @@ ${userMaterials}
         applicationData: ApplicationData,
         onProgress?: (charCount: number) => void,
     ): Promise<BoardResult> {
-        const { websiteContent, userMaterials, sampleContent, detailLevel = 50, stylePreference = 50 } = applicationData;
+        const { websiteContent, userMaterials, sampleContent, detailLevel = 50, stylePreference = 50, targetWords = 1000 } = applicationData;
         const boardInfo = overview.structure?.find(s => s.title === boardName);
 
         const writingGuide = boardInfo?.writingGuide || this._getDefaultWritingGuide(boardName);
         const keyPoints = boardInfo?.keyPoints || [];
 
-        // 根据详细程度生成字数要求
-        const minWords = Math.round(60 + (detailLevel / 100) * 140);
-        const nodesPerSection = detailLevel <= 30 ? '2-3' : detailLevel >= 70 ? '4-6' : '3-4';
-        const targetLength = boardInfo?.targetLength || '500-800字';
+        // 各板块字数分配比例（合计 100%）
+        const BOARD_RATIOS: Record<string, number> = {
+            '兴趣起源': 0.25,
+            '进阶思考': 0.25,
+            '能力匹配': 0.25,
+            '心仪课程': 0.15,
+            '衷心求学': 0.10,
+        };
+        const ratio = BOARD_RATIOS[boardName] ?? 0.20;
+        const perBoardLimit = Math.round(targetWords * ratio);
+
+        // 字数配额只限正文（content 节点），解释/总结不限
+        const nodesPerSection = perBoardLimit >= 400 ? '3-4' : perBoardLimit >= 250 ? '2-3' : '2';
+        const nodeCount       = perBoardLimit >= 400 ? 3 : 2;
+        const contentWords    = Math.round(perBoardLimit / nodeCount);
 
         // 根据风格偏好生成风格指令
         let styleInstruction = '';
@@ -255,43 +287,29 @@ ${writingGuide}
 ## 核心要点（必须涵盖）
 ${keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
-## 目标字数
-${targetLength}
-
-## 详细程度
-- 正文节点每个至少 ${minWords} 字
-- 每个板块安排 ${nodesPerSection} 个正文节点${styleInstruction}
+## ⚠️ 正文字数限制（严格遵守）
+本板块正文配额 **${perBoardLimit} 字**，共 ${nodesPerSection} 个正文节点，每个正文节点 title 不超过 **${contentWords} 字**。
+解释节点、图片节点、板块总结无字数限制，写清楚即可。${styleInstruction}
 
 ## 参考材料
-${sampleContent ? `## 参考样例\n${sampleContent}\n` : ''}
-## 学校项目介绍
+${sampleContent ? `### 参考样例\n${sampleContent}\n` : ''}
+### 学校项目介绍
 ${websiteContent}
 
-## 申请人背景材料
+### 申请人背景材料
 ${userMaterials}
 
-## 输出要求（严格遵守）
+## 节点结构（严格遵守，不增减层级）
+1. 板块根节点：title="${boardName}", type="content", id=UUID
+2. children 中：${nodesPerSection} 个正文节点 + 1 个总结节点
+   - 正文节点：type="content", title **不超过 ${contentWords} 字**, id=UUID
+     - 正文的 children：1 个解释节点
+       - 解释节点：type="explanation", title 微信口吻 2-4 句, id=UUID
+         - 解释的 children：1 个图片节点 {title, imageKeyword, children:[]}
+   - 总结节点：type="explanation", title 以"板块总结："开头，内容不限字数, id=UUID, children=[]
 
-### 节点结构
-每个板块的结构必须如下：
-1. 板块根节点：title, id（UUID）, type: "content"
-2. 正文节点数组（children）：
-   - 每个正文节点：title（100字以上完整段落）, type: "content", id（UUID）
-   - 正文节点的children：解释节点数组
-     - 解释节点：title（微信口吻，2-4句话）, type: "explanation", id（UUID）
-     - 解释节点的children：可选的补充解释或**图片节点**
-3. **板块总结节点**（必须，放在children的最后）：
-   - title: 必须以"板块总结："开头，例如："板块总结：用口语但有信息密度的方式总结3-5个要点，像给姐姐发微信收尾"
-   - type: "explanation"
-   - id: UUID
-
-### 图片节点（必须）
-每个最终叶子节点（解释节点或补充解释节点）后面必须放图片节点：
-- 形式A: {"title": "给学生看的简短解释或备注", "imageKeyword": "英文图片关键词", "children": []}
-- 形式B: {"title": "网址或资源名称", "imageKeyword": "英文图片关键词", "children": [{"title": "一句话解释这个网址/资源的用处", "imageKeyword": "", "children": []}]}
-
-### 禁止事项
-- 禁止使用申请文书套话
+## 禁止事项
+- 禁止申请文书套话
 - 禁止写成简历复述
 - 禁止套话开头："我对XX有浓厚兴趣"
 
@@ -302,26 +320,22 @@ ${userMaterials}
   "id": "UUID",
   "children": [
     {
-      "title": "正文段落（100字以上，有具体故事、场景、细节）",
+      "title": "正文内容（不超过 ${contentWords} 字，有具体故事细节）",
       "type": "content",
       "id": "UUID",
       "children": [
         {
-          "title": "解释内容（微信口吻，2-4句话）",
+          "title": "解释（微信口吻 2-4 句）",
           "type": "explanation",
           "id": "UUID",
           "children": [
-            {
-              "title": "图片说明或补充解释",
-              "imageKeyword": "图片关键词",
-              "children": []
-            }
+            { "title": "简短备注", "imageKeyword": "english keyword", "children": [] }
           ]
         }
       ]
     },
     {
-      "title": "板块总结：用口语但有信息密度的方式总结3-5个要点，像给姐姐发微信收尾",
+      "title": "板块总结：口语总结 3-5 个要点",
       "type": "explanation",
       "id": "UUID",
       "children": []
@@ -331,22 +345,79 @@ ${userMaterials}
 
 只输出JSON，不输出任何其他内容。`;
 
+        // 正文限制了，但解释/总结不限，所以 maxTokens 要足够大
+        // 正文配额 + 解释（正文的 2-3 倍）+ 总结 + JSON元数据
+        // 估算：(perBoardLimit正文 + perBoardLimit*2.5解释/总结) * 1.5 JSON展开系数
+        const boardMaxTokens = Math.max(3000, Math.round(perBoardLimit * 5));
+
         const result = await this._callAI({
             systemPrompt: `你是一个专业的申请文书写作师。
 你的任务是生成高质量的申请文书板块内容，包含正文、解释、总结和图片节点。
 你只输出JSON，不输出任何解释、标记或代码块。`,
             userPrompt: prompt,
-            maxTokens: 8000,
+            maxTokens: boardMaxTokens,
             onProgress
         });
+
+        // 代码层强制执行：只截断正文节点，解释/总结不动
+        const enforced = this._enforceWordLimits(result, nodeCount, contentWords);
 
         return {
             boardName,
             boardId: boardInfo?.id || crypto.randomUUID(),
-            data: result,
+            data: enforced,
             writingGuide,
             keyPoints
         };
+    }
+
+    /**
+     * 代码层强制执行字数限制：删多余节点、截断超长 title
+     * 不走AI，100% 可靠
+     */
+    private _enforceWordLimits(
+        boardData: Record<string, unknown>,
+        nodeCount: number,
+        contentWords: number,
+    ): Record<string, unknown> {
+        // 截断策略：优先完整句子末尾（。！？）→ 退而求其次在逗号处（，；）→ 硬截加“…”
+        const truncate = (text: string, limit: number): string => {
+            if (!text || text.length <= limit) return text;
+            const sub = text.slice(0, limit);
+            const sentenceEnd = Math.max(
+                sub.lastIndexOf('。'), sub.lastIndexOf('！'), sub.lastIndexOf('？'),
+            );
+            if (sentenceEnd >= Math.floor(limit * 0.5)) return sub.slice(0, sentenceEnd + 1);
+            const clauseEnd = Math.max(
+                sub.lastIndexOf('，'), sub.lastIndexOf('；'), sub.lastIndexOf('…'),
+            );
+            if (clauseEnd >= Math.floor(limit * 0.6)) return sub.slice(0, clauseEnd + 1);
+            return sub + '…';
+        };
+
+        type Node = { title?: string; type?: string; id?: string; imageKeyword?: string; children?: Node[] };
+
+        const processContent = (node: Node): Node => ({
+            ...node,
+            title: truncate(node.title ?? '', contentWords),
+            // 解释/图片子节点完全保留，不动
+            children: node.children ?? [],
+        });
+
+        const children = (boardData.children ?? []) as Node[];
+        // 只限制正文节点数量和内容，解释/总结完全不动
+        const contentNodes = children.filter(n => n.type === 'content').slice(0, nodeCount).map(processContent);
+        const nonContentNodes = children.filter(n => n.type !== 'content');
+
+        const after = [...contentNodes, ...nonContentNodes];
+        const beforeContentChars = children.filter(n => n.type === 'content')
+            .reduce((s, n) => s + (n.title?.length ?? 0), 0);
+        const afterContentChars = contentNodes.reduce((s, n) => s + (n.title?.length ?? 0), 0);
+        if (beforeContentChars !== afterContentChars) {
+            console.log(`[INFO] _enforceWordLimits 正文: ${beforeContentChars} → ${afterContentChars} 字`);
+        }
+
+        return { ...boardData, children: after };
     }
 
     /**
@@ -536,6 +607,80 @@ ${JSON.stringify(reviewResults, null, 2)}
         }
 
         return validRelationships;
+    }
+
+    /**
+     * 统计板块所有节点的总字数（递归累加每个 title 的字符数）
+     */
+    private _countBoardWords(boardData: unknown): number {
+        let count = 0;
+
+        const traverse = (node: unknown) => {
+            if (!node || typeof node !== 'object') return;
+
+            const n = node as { title?: string; children?: unknown[] };
+            if (typeof n.title === 'string') {
+                count += n.title.length;
+            }
+            if (Array.isArray(n.children)) {
+                n.children.forEach(traverse);
+            }
+        };
+
+        traverse(boardData);
+        return count;
+    }
+
+    /**
+     * 如果板块实际字数超过 perBoardLimit * 1.2，调用压缩AI将内容压到限制以内
+     * 失败时静默降级，返回原始结果，不影响主流程
+     */
+    private async _compressBoard(
+        boardResult: BoardResult,
+        perBoardLimit: number,
+        onProgress?: (charCount: number) => void,
+    ): Promise<BoardResult> {
+        const currentWords = this._countBoardWords(boardResult.data);
+
+        if (currentWords <= perBoardLimit * 1.2) {
+            console.log(`[INFO] 板块「${boardResult.boardName}」字数正常 (${currentWords}/${perBoardLimit})，无需压缩`);
+            return boardResult;
+        }
+
+        console.log(`[INFO] 板块「${boardResult.boardName}」字数超标 (${currentWords} > ${perBoardLimit})，启动压缩...`);
+
+        const compressPrompt = `请将以下思维导图板块内容压缩到 ${perBoardLimit} 字以内（正文+解释+总结合计）。
+
+## 当前内容（共约 ${currentWords} 字，需压缩到 ${perBoardLimit} 字以内）
+${JSON.stringify(boardResult.data, null, 2)}
+
+## 压缩要求
+1. 保持完整的JSON结构（所有字段名如 type、id、imageKeyword 一律保留）
+2. 只缩短每个 title 字段的文字，不删除节点
+3. 优先压缩 explanation 节点，其次压缩 content 节点
+4. title 以"板块总结："开头的总结节点保留但也需压缩
+
+只输出JSON，不输出任何其他内容。`;
+
+        try {
+            const compressed = await this._callAI({
+                systemPrompt: `你是一个文字压缩专家。在保持JSON结构不变的前提下，压缩思维导图节点的文字内容，使总字数不超过指定限制。只输出JSON，不输出任何解释、标记或代码块。`,
+                userPrompt: compressPrompt,
+                maxTokens: 6000,
+                onProgress,
+            });
+
+            const afterWords = this._countBoardWords(compressed);
+            console.log(`[INFO] 板块「${boardResult.boardName}」压缩完成: ${currentWords} → ${afterWords} 字`);
+
+            return {
+                ...boardResult,
+                data: compressed
+            };
+        } catch (err) {
+            console.warn(`[WARN] 板块「${boardResult.boardName}」压缩失败，保留原始结果:`, err);
+            return boardResult;
+        }
     }
 
     /**

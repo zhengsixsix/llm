@@ -41,6 +41,7 @@ export interface JobData {
     activitiesLink: string;
     detailLevel: number;
     stylePreference: number;
+    targetWords: number;
     userMaterials: string;
     sampleContent: string;
     websiteContent: string;

@@ -65,6 +65,7 @@ export default function Home() {
       formData.append('activitiesLink', activitiesUrl);
       formData.append('detailLevel', String(detailLevel));
       formData.append('stylePreference', String(stylePreference));
+      formData.append('targetWords', targetWords);
       // retry 时带上已有 jobId，后端会从 checkpoint 继续而不是重新开始
       if (currentJobId) {
         formData.append('jobId', currentJobId);

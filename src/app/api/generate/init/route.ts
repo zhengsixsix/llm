@@ -72,14 +72,18 @@ export async function runProcessJob(jobId: string): Promise<void> {
         programName: input.programName,
         websiteContent,
         userMaterials: input.userMaterials,
-        sampleContent: input.sampleContent,
+      sampleContent: input.sampleContent,
         detailLevel: input.detailLevel,
         stylePreference: input.stylePreference,
+        targetWords: input.targetWords,
       },
       (step, charCount) => {
-        updateJob(jobId, {
-          progress: `AI 生成中（${step} - ${charCount} 字）`,
-        }).catch(() => { });
+        // 板块生成和压缩的 charCount 是原始 JSON 流长度，不是内容字数，不显示防止误导
+        const isBoard = step.startsWith('板块:') || step.startsWith('压缩:');
+        const msg = isBoard
+          ? `AI 生成中（${step}）`
+          : `AI 生成中（${step} - ${charCount} 字）`;
+        updateJob(jobId, { progress: msg }).catch(() => { });
       },
       checkpoint ?? undefined,
       async (cp) => {
@@ -116,6 +120,7 @@ export async function POST(request: NextRequest) {
   const activitiesLink = (formData.get('activitiesLink') as string) || '';
   const detailLevel = Number(formData.get('detailLevel')) || 50;
   const stylePreference = Number(formData.get('stylePreference') || '50') || 50;
+  const targetWords = Number(formData.get('targetWords')) || 1000;
   const existingJobId = (formData.get('jobId') as string) || '';
 
   try {
@@ -187,7 +192,7 @@ export async function POST(request: NextRequest) {
     await createJob(jobId, {
       schoolName, programName,
       projectWebsite, curriculumLink, activitiesLink,
-      detailLevel, stylePreference,
+      detailLevel, stylePreference, targetWords,
       userMaterials, sampleContent,
       websiteContent: '',
     });
