@@ -1,25 +1,31 @@
-/**
- * POST /api/generate/init
- * 初始化生成任务，投递到 QStash 后立即返回 jobId
- * GET  /api/generate/init
- * 查询任务状态 + 自动续跑兜底（万无一失）
- */
-
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { validateRequired, validateUrl } from '@/lib/utils/validators';
-import { makeJobId, createJob, updateJob, getJob, getCheckpoint } from '@/lib/kvStore';
-import { webScraperService, documentService, sampleService } from '@/lib/services';
-import { claudeService } from '@/lib/services/claudeService';
 import {
-  isQStashConfigured,
-  enqueueQStash,
-} from '@/lib/qstashClient';
+  createJob,
+  getCheckpoint,
+  getJob,
+  makeJobId,
+  saveCheckpoint,
+  updateJob,
+} from '@/lib/kvStore';
+import {
+  documentService,
+  sampleService,
+  sampleStyleService,
+  webScraperService,
+} from '@/lib/services';
+import { claudeService } from '@/lib/services/claudeService';
+import { enqueueQStash, isQStashConfigured } from '@/lib/qstashClient';
 import type { ServiceFile } from '@/types/config';
 import type { MindMapNode } from '@/types/mindmap';
 
 export const dynamic = 'force-dynamic';
 
-// ─── Shared helpers ──────────────────────────────────────────────────────────
+function shouldUseQStash(): boolean {
+  return process.env.NODE_ENV === 'production'
+    && isQStashConfigured()
+    && Boolean(process.env.QSTASH_WEBHOOK_URL);
+}
 
 async function attachImages(nodes: MindMapNode[]): Promise<void> {
   const { imageSearchService } = await import('@/lib/services');
@@ -27,44 +33,54 @@ async function attachImages(nodes: MindMapNode[]): Promise<void> {
     if (node.imageKeyword) {
       try {
         const imageUrl = await imageSearchService.searchImage(node.imageKeyword);
-        if (imageUrl) node.imageUrl = imageUrl;
+        if (imageUrl) {
+          node.imageUrl = imageUrl;
+        }
       } catch {
-        console.warn(`[WARN] 图片搜索失败: ${node.imageKeyword}`);
+        console.warn(`[WARN] image lookup failed: ${node.imageKeyword}`);
       }
     }
-    if (node.children?.length) await attachImages(node.children);
+    if (node.children?.length) {
+      await attachImages(node.children);
+    }
   }
 }
 
 export async function runProcessJob(jobId: string): Promise<void> {
+  let latestProgress = '正在读取材料…';
+  const heartbeatTimer = setInterval(() => {
+    updateJob(jobId, { status: 'processing', progress: latestProgress }).catch(() => undefined);
+  }, 5_000);
+
+  const setProgress = async (progress: string): Promise<void> => {
+    latestProgress = progress;
+    await updateJob(jobId, { status: 'processing', progress });
+  };
+
   try {
-    await updateJob(jobId, { status: 'processing', progress: '正在读取材料…' });
+    await setProgress('正在读取材料…');
 
     const job = await getJob(jobId);
     if (!job?.input) {
       await updateJob(jobId, { status: 'error', error: '任务数据不存在' });
       return;
     }
-    const { input } = job;
 
-    // 抓取网页（失败不影响主流程）
+    const { input } = job;
     let websiteContent = input.websiteContent ?? '';
     if (!websiteContent) {
       const urls = [input.projectWebsite, input.curriculumLink, input.activitiesLink].filter(Boolean);
       if (urls.length > 0) {
         try {
           websiteContent = await webScraperService.fetchMultipleUrls(urls);
-        } catch (scrapeErr) {
-          console.warn('[WARN] 网页抓取失败，继续用已有材料:', scrapeErr);
+        } catch (error) {
+          console.warn('[WARN] website scraping failed, continuing with existing materials', error);
         }
       }
     }
 
     const checkpoint = await getCheckpoint(jobId);
-
-    await updateJob(jobId, {
-      progress: checkpoint ? `继续生成（上一步: ${checkpoint.step}）…` : '总览AI 生成中…',
-    });
+    await setProgress(checkpoint ? `继续生成中（恢复到步骤 ${checkpoint.step}）…` : '总览AI生成中…');
 
     const structure = await claudeService.generateApplicationMindMap(
       {
@@ -72,27 +88,29 @@ export async function runProcessJob(jobId: string): Promise<void> {
         programName: input.programName,
         websiteContent,
         userMaterials: input.userMaterials,
-      sampleContent: input.sampleContent,
+        sampleContent: input.sampleContent,
+        styleProfile: input.styleProfile,
         detailLevel: input.detailLevel,
         stylePreference: input.stylePreference,
         targetWords: input.targetWords,
       },
       (step, charCount) => {
-        // 板块生成和压缩的 charCount 是原始 JSON 流长度，不是内容字数，不显示防止误导
-        const isBoard = step.startsWith('板块:') || step.startsWith('压缩:');
-        const msg = isBoard
+        const isBoardStep = step.startsWith('板块:');
+        const progress = isBoardStep
           ? `AI 生成中（${step}）`
-          : `AI 生成中（${step} - ${charCount} 字）`;
-        updateJob(jobId, { progress: msg }).catch(() => { });
+          : charCount > 0
+            ? `AI 生成中（${step} - ${charCount}字）`
+            : `AI 生成中（${step}）`;
+        latestProgress = progress;
+        updateJob(jobId, { status: 'processing', progress }).catch(() => undefined);
       },
       checkpoint ?? undefined,
       async (cp) => {
-        await import('@/lib/kvStore').then(m => m.saveCheckpoint(jobId, cp));
-        console.log(`[CHECKPOINT] step=${cp.step} 已保存`);
+        await saveCheckpoint(jobId, cp);
       },
     );
 
-    await updateJob(jobId, { progress: '正在搜索配图…' });
+    await setProgress('正在搜索配图…');
     await attachImages(structure.structure);
 
     await updateJob(jobId, {
@@ -100,15 +118,14 @@ export async function runProcessJob(jobId: string): Promise<void> {
       progress: '生成完成',
       result: structure,
     });
-
   } catch (error) {
     const message = error instanceof Error ? error.message : '生成失败';
-    console.error('[ERROR] processJob 失败:', message);
+    console.error('[ERROR] processJob failed:', message);
     await updateJob(jobId, { status: 'error', error: message });
+  } finally {
+    clearInterval(heartbeatTimer);
   }
 }
-
-// ─── POST ────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -130,7 +147,7 @@ export async function POST(request: NextRequest) {
     if (curriculumLink) validateUrl(curriculumLink, '课程链接');
     if (activitiesLink) validateUrl(activitiesLink, '活动链接');
   } catch (error) {
-    const message = error instanceof Error ? error.message : '参数验证失败';
+    const message = error instanceof Error ? error.message : '参数校验失败';
     return new Response(JSON.stringify({ success: false, error: message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
@@ -140,76 +157,86 @@ export async function POST(request: NextRequest) {
   const files: ServiceFile[] = [];
   const uploadedFiles = formData.getAll('files') as File[];
   let sampleContent = '';
+  let styleProfile = undefined;
 
-  if (uploadedFiles?.length) {
+  if (uploadedFiles.length > 0) {
     for (const file of uploadedFiles) {
-      if (file) {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        if (file.name.endsWith('.xmind')) {
-          try {
-            const parsed = await sampleService.parseXMindBuffer(buffer, file.name);
-            if (parsed) sampleContent = parsed;
-          } catch (e) {
-            console.warn('[WARN] XMind 样例解析失败:', e);
+      const buffer = Buffer.from(await file.arrayBuffer());
+      if (file.name.endsWith('.xmind')) {
+        try {
+          const parsed = await sampleService.parseXMindBufferDetailed(buffer, file.name);
+          if (parsed) {
+            sampleContent = parsed.renderedText;
+            styleProfile = sampleStyleService.buildProfile(parsed, sampleContent);
           }
-        } else if (documentService.isSupportedFile(file.name)) {
-          files.push({ filename: file.name, content: buffer });
+        } catch (error) {
+          console.warn('[WARN] sample xmind parse failed:', error);
         }
+        continue;
+      }
+
+      if (documentService.isSupportedFile(file.name)) {
+        files.push({ filename: file.name, content: buffer });
       }
     }
   }
 
-  // 用户未上传样例时，读取本地默认样例
   if (!sampleContent) {
-    sampleContent = await sampleService.getDefaultSampleContent();
+    const defaultSample = await sampleService.getDefaultSampleDocument();
+    sampleContent = defaultSample?.renderedText || '';
+    styleProfile = sampleStyleService.buildProfile(defaultSample || undefined, sampleContent);
+  } else if (!styleProfile) {
+    styleProfile = sampleStyleService.buildProfile(undefined, sampleContent);
   }
 
   let userMaterials = '';
   if (files.length > 0) {
     try {
       userMaterials = await documentService.readFiles(files);
-    } catch (e) {
-      console.warn('[WARN] 材料读取失败，继续生成:', e);
+    } catch (error) {
+      console.warn('[WARN] document reading failed, continuing without extracted text', error);
     }
   }
 
   const jobId = existingJobId || makeJobId();
-
-  // retry 场景：已有 checkpoint，直接续跑
   if (existingJobId) {
     const existingJob = await getJob(jobId);
     if (existingJob?.checkpoint) {
       await updateJob(jobId, {
         status: 'processing',
-        progress: `继续生成（上一步: ${existingJob.checkpoint.step}）…`,
+        progress: `继续生成中（恢复到步骤 ${existingJob.checkpoint.step}）…`,
       });
-      await enqueueJob(jobId);
+      await enqueueJob(jobId, { force: true });
       return json({ success: true, jobId });
     }
   }
 
   try {
     await createJob(jobId, {
-      schoolName, programName,
-      projectWebsite, curriculumLink, activitiesLink,
-      detailLevel, stylePreference, targetWords,
-      userMaterials, sampleContent,
+      schoolName,
+      programName,
+      projectWebsite,
+      curriculumLink,
+      activitiesLink,
+      detailLevel,
+      stylePreference,
+      targetWords,
+      userMaterials,
+      sampleContent,
+      styleProfile,
       websiteContent: '',
     });
   } catch (error) {
-    console.error('[ERROR] Redis 创建任务失败:', error);
-    return json({ success: false, error: '任务存储服务异常，请检查 Redis 环境变量配置' }, 503);
+    console.error('[ERROR] create job failed:', error);
+    return json({ success: false, error: '任务存储服务异常，请检查 Redis 配置' }, 503);
   }
 
-  // QStash 投递（无 QStash 时用 waitUntil 后台执行，不阻塞请求）
-  if (!isQStashConfigured() || !process.env.QSTASH_WEBHOOK_URL) {
-    // 立即返回，AI 放到后台跑（不阻塞请求）
-    const { waitUntil } = request as NextRequest & { waitUntil?: (p: Promise<void>) => void };
+  if (!shouldUseQStash()) {
+    const { waitUntil } = request as NextRequest & { waitUntil?: (promise: Promise<void>) => void };
     if (waitUntil) {
       waitUntil(runProcessJob(jobId));
     } else {
-      // 本地开发兜底：Promise 不 await 就触发
-      runProcessJob(jobId).catch((err) => console.error('[ERROR] 后台任务异常:', err));
+      runProcessJob(jobId).catch((error) => console.error('[ERROR] background job failed:', error));
     }
   } else {
     await enqueueJob(jobId);
@@ -217,8 +244,6 @@ export async function POST(request: NextRequest) {
 
   return json({ success: true, jobId });
 }
-
-// ─── GET ─────────────────────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -228,23 +253,24 @@ export async function GET(request: NextRequest) {
     return json({ success: false, error: '缺少 jobId' }, 400);
   }
 
-  const job = await getJob(jobId);
+  let job = await getJob(jobId);
   if (!job) {
     return json({ success: false, error: '任务不存在' }, 404);
   }
 
-  // ── 自动续跑兜底：processing 超过 N 秒没心跳，视为中断，立即重新投递 ──
-  // 注意：总览/板块/审核AI 可能耗时 3-5 分钟，阈值太低会导致误判反复重投
-  const HEARTBEAT_TIMEOUT_MS = 3 * 60 * 1000; // 3分钟
+  const heartbeatTimeoutMs = 3 * 60 * 1000;
   if (job.status === 'processing') {
     const lastActive = job.lastHeartbeat ?? job.updatedAt;
-    if (Date.now() - lastActive > HEARTBEAT_TIMEOUT_MS) {
-      console.warn(`[WARN] 任务 ${jobId} 心跳超时（${Date.now() - lastActive}ms），重新投递…`);
+    if (Date.now() - lastActive > heartbeatTimeoutMs) {
       await updateJob(jobId, {
         status: 'processing',
-        progress: '检测到任务中断，自动恢复中…',
+        progress: '检测到任务中断，正在自动恢复…',
       });
-      await enqueueJob(jobId);
+      await enqueueJob(jobId, { force: true });
+      job = await getJob(jobId);
+      if (!job) {
+        return json({ success: false, error: '任务不存在' }, 404);
+      }
     }
   }
 
@@ -257,8 +283,6 @@ export async function GET(request: NextRequest) {
   });
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -266,51 +290,31 @@ function json(data: unknown, status = 200) {
   });
 }
 
-async function enqueueJob(jobId: string): Promise<void> {
-  // ── 防重锁：如果任务正在处理中且心跳较新，跳过重复投递 ──
+async function enqueueJob(jobId: string, options?: { force?: boolean }): Promise<void> {
   const existing = await getJob(jobId);
-  if (existing?.status === 'processing') {
+  if (!options?.force && existing?.status === 'processing') {
     const active = existing.lastHeartbeat ?? existing.updatedAt;
-    // 3分钟内有活跃心跳，说明任务还在跑，不再投递
     if (Date.now() - active < 3 * 60 * 1000) {
-      console.log(`[INFO] 任务 ${jobId} 仍在处理中（心跳正常），跳过重复投递`);
       return;
     }
-    // 心跳超时才继续投递
-    console.warn(`[WARN] 任务 ${jobId} 心跳超时，准备重新投递`);
   }
 
-  // 打印 QStash 环境变量诊断（不打印 token 值）
-  console.log('[DIAG] QStash 配置诊断:', {
-    hasToken: !!process.env.QSTASH_TOKEN,
-    hasSigningKey: !!process.env.QSTASH_CURRENT_SIGNING_KEY,
-    hasWebhookUrl: !!process.env.QSTASH_WEBHOOK_URL,
-    webhookUrl: process.env.QSTASH_WEBHOOK_URL ?? '(未定义)',
-    qstashUrl: process.env.QSTASH_URL ?? '(使用默认)',
-  });
-
-  if (!isQStashConfigured()) {
-    console.log('[INFO] QStash 未配置，直接运行 processJob');
+  if (!shouldUseQStash()) {
     await runProcessJob(jobId);
     return;
   }
 
   const webhookUrl = process.env.QSTASH_WEBHOOK_URL;
   if (!webhookUrl) {
-    console.warn('[WARN] QSTASH_WEBHOOK_URL 未配置，降级为直接调用');
     await runProcessJob(jobId);
     return;
   }
 
-  const base = webhookUrl.trim().replace(/\/+$/, '');
-  const targetUrl = `${base}/api/qstash`;
-  console.log('[DIAG] QStash 投递目标 URL:', targetUrl);
-
+  const targetUrl = `${webhookUrl.trim().replace(/\/+$/, '')}/api/qstash`;
   try {
     await enqueueQStash(targetUrl, { jobId }, 3);
-    console.log(`[INFO] 任务 ${jobId} 已投递到 QStash`);
-  } catch (err) {
-    console.error('[ERROR] QStash 投递失败，降级为直接调用:', err);
+  } catch (error) {
+    console.error('[ERROR] qstash enqueue failed, falling back to direct execution', error);
     await runProcessJob(jobId);
   }
 }

@@ -2,14 +2,13 @@
 
 import { useState } from 'react';
 import type { MindMapData, MindMapNode } from '@/types/mindmap';
-import { findNodeById, getNodePath } from '@/types/mindmap';
+import { findNodeById, getBoardContextByNodeId, getNodePath } from '@/types/mindmap';
 
 interface NodeEditorPanelProps {
   data: MindMapData;
-  onUpdateNode: (nodeId: string, newTitle: string) => void;
+  onUpdateNodes: (updates: Array<{ nodeId: string; newTitle: string }>) => void;
 }
 
-/** 单个树节点 */
 function TreeNode({
   node,
   depth,
@@ -32,29 +31,25 @@ function TreeNode({
     node.type === 'explanation'
       ? 'text-amber-600'
       : node.type === 'image'
-      ? 'text-gray-400'
-      : 'text-[#3e3832]';
+        ? 'text-gray-400'
+        : 'text-[#3e3832]';
 
-  const label =
-    node.title.length > 50 ? node.title.slice(0, 50) + '…' : node.title;
+  const label = node.title.length > 50 ? `${node.title.slice(0, 50)}…` : node.title;
 
   return (
     <div>
       <div
         className={`flex items-start gap-1 py-1 px-2 rounded cursor-pointer text-xs leading-relaxed transition-colors ${
-          isSelected
-            ? 'bg-[#b20155]/10 text-[#b20155]'
-            : 'hover:bg-gray-100'
+          isSelected ? 'bg-[#b20155]/10 text-[#b20155]' : 'hover:bg-gray-100'
         }`}
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
-        onClick={(e) => node.id && onSelect(node.id, e.shiftKey || e.metaKey || e.ctrlKey)}
+        onClick={(event) => node.id && onSelect(node.id, event.shiftKey || event.metaKey || event.ctrlKey)}
       >
-        {/* 展开/折叠 */}
         {hasChildren ? (
           <button
             className="mt-0.5 w-4 h-4 flex-shrink-0 flex items-center justify-center text-gray-400 hover:text-gray-600"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               setExpanded(!expanded);
             }}
           >
@@ -77,7 +72,6 @@ function TreeNode({
           <span className="w-4 flex-shrink-0" />
         )}
 
-        {/* 类型标记 */}
         {node.type === 'explanation' && (
           <span className="mt-0.5 w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
         )}
@@ -85,7 +79,6 @@ function TreeNode({
         <span className={`${typeColor} break-all`}>{label}</span>
       </div>
 
-      {/* 子节点 */}
       {expanded && hasChildren && (
         <div>
           {node.children!.map((child) => (
@@ -103,40 +96,45 @@ function TreeNode({
   );
 }
 
-export default function NodeEditorPanel({ data, onUpdateNode }: NodeEditorPanelProps) {
+export default function NodeEditorPanel({ data, onUpdateNodes }: NodeEditorPanelProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
   const [editText, setEditText] = useState('');
   const [panelCollapsed, setPanelCollapsed] = useState(false);
 
-  // 当只有一个被选中时，显示编辑区
   const singleSelectedId = selectedIds.size === 1 ? Array.from(selectedIds)[0] : null;
   const singleSelectedNode = singleSelectedId ? findNodeById(data.structure, singleSelectedId) : null;
 
   const handleSelect = (id: string, multi: boolean) => {
     if (multi) {
-      // Shift/Ctrl/Cmd 多选切换
       setSelectedIds((prev) => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
         return next;
       });
-    } else {
-      // 单选
-      setSelectedIds(new Set([id]));
-      const node = findNodeById(data.structure, id);
-      if (node) setEditText(node.title);
+      return;
     }
+
+    setSelectedIds(new Set([id]));
+    const node = findNodeById(data.structure, id);
+    if (node) setEditText(node.title);
   };
 
-  /** 单节点 AI 重写 */
   const regenerateOne = async (nodeId: string) => {
     const node = findNodeById(data.structure, nodeId);
     if (!node) return;
 
     const nodePath = getNodePath(data.structure, nodeId) || [];
+    const boardContext = getBoardContextByNodeId(data.structure, nodeId);
+    const parentContentNode = boardContext?.contentNodes.find((candidate) =>
+      candidate.children?.some((child) => child.id === nodeId),
+    );
+    const pairedExplanationNode = node.type === 'content'
+      ? (node.children || []).find((child) => child.type === 'explanation')
+      : undefined;
+
     const res = await fetch('/api/regenerate-node', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -145,46 +143,59 @@ export default function NodeEditorPanel({ data, onUpdateNode }: NodeEditorPanelP
         nodePath,
         rootTitle: data.rootTitle,
         nodeType: node.type || 'content',
+        nodeMeta: node.meta,
+        generationMeta: data.generationMeta,
+        boardName: boardContext?.boardName,
+        boardSummary: boardContext?.summaryNode?.title,
+        boardContentTitles: boardContext?.contentNodes.map((item) => item.title) || [],
+        boardExplanationTitles: boardContext?.explanationNodes.map((item) => item.title) || [],
+        parentContentTitle: parentContentNode?.title,
+        pairedExplanationTitle: pairedExplanationNode?.title,
       }),
     });
+
     const result = await res.json();
     if (result.success && result.newTitle) {
-      onUpdateNode(nodeId, result.newTitle);
+      const updates = [{ nodeId, newTitle: result.newTitle }];
+      if (result.pairedExplanationTitle && pairedExplanationNode?.id) {
+        updates.push({ nodeId: pairedExplanationNode.id, newTitle: result.pairedExplanationTitle });
+      }
+      onUpdateNodes(updates);
       return result.newTitle;
     }
+
     throw new Error(result.error || '重新生成失败');
   };
 
-  /** 单节点重写按钮 */
   const handleRegenerate = async () => {
     if (!singleSelectedId) return;
     setIsRegenerating(true);
     try {
       const newTitle = await regenerateOne(singleSelectedId);
       if (newTitle) setEditText(newTitle);
-    } catch (err: any) {
-      alert(err.message || '请求失败');
+    } catch (error: any) {
+      alert(error.message || '请求失败');
     } finally {
       setIsRegenerating(false);
     }
   };
 
-  /** 批量 AI 重写 */
   const handleBatchRegenerate = async () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
+
     setIsRegenerating(true);
     setBatchProgress({ done: 0, total: ids.length });
 
     const results = await Promise.allSettled(
       ids.map(async (id) => {
-        const r = await regenerateOne(id);
+        const value = await regenerateOne(id);
         setBatchProgress((prev) => ({ ...prev, done: prev.done + 1 }));
-        return r;
+        return value;
       }),
     );
 
-    const failCount = results.filter((r) => r.status === 'rejected').length;
+    const failCount = results.filter((item) => item.status === 'rejected').length;
     if (failCount > 0) {
       alert(`${ids.length - failCount} 个节点重写成功，${failCount} 个失败`);
     }
@@ -195,7 +206,7 @@ export default function NodeEditorPanel({ data, onUpdateNode }: NodeEditorPanelP
 
   const handleManualSave = () => {
     if (singleSelectedId && editText.trim()) {
-      onUpdateNode(singleSelectedId, editText.trim());
+      onUpdateNodes([{ nodeId: singleSelectedId, newTitle: editText.trim() }]);
     }
   };
 
@@ -213,7 +224,6 @@ export default function NodeEditorPanel({ data, onUpdateNode }: NodeEditorPanelP
 
   return (
     <div className="absolute top-0 right-0 bottom-0 w-[380px] z-20 bg-white border-l border-gray-200 shadow-lg flex flex-col">
-      {/* 头部 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-[#3e3832]">节点编辑</h3>
@@ -223,20 +233,15 @@ export default function NodeEditorPanel({ data, onUpdateNode }: NodeEditorPanelP
             </span>
           )}
         </div>
-        <button
-          onClick={() => setPanelCollapsed(true)}
-          className="text-gray-400 hover:text-gray-600"
-        >
+        <button onClick={() => setPanelCollapsed(true)} className="text-gray-400 hover:text-gray-600">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
 
-      {/* 多选提示 */}
       <div className="px-4 py-1.5 text-[10px] text-gray-400 bg-gray-50/50 border-b border-gray-50">
         按住 Shift/Cmd 点击可多选节点
       </div>
 
-      {/* 树形列表 */}
       <div className="flex-1 overflow-y-auto border-b border-gray-100">
         <div className="px-2 py-1.5 text-xs font-semibold text-[#3e3832] bg-gray-50">
           {data.rootTitle}
@@ -252,7 +257,6 @@ export default function NodeEditorPanel({ data, onUpdateNode }: NodeEditorPanelP
         ))}
       </div>
 
-      {/* 批量操作栏（多选时显示） */}
       {selectedIds.size > 1 && (
         <div className="flex-shrink-0 px-3 py-2 bg-[#b20155]/5 border-b border-gray-100 flex items-center justify-between">
           <span className="text-xs text-[#3e3832]">已选择 {selectedIds.size} 个节点</span>
@@ -279,7 +283,6 @@ export default function NodeEditorPanel({ data, onUpdateNode }: NodeEditorPanelP
         </div>
       )}
 
-      {/* 单节点编辑区 */}
       {singleSelectedNode && (
         <div className="flex-shrink-0 p-3 space-y-2 bg-gray-50 max-h-[45%] flex flex-col">
           <div className="flex items-center justify-between">
@@ -317,7 +320,7 @@ export default function NodeEditorPanel({ data, onUpdateNode }: NodeEditorPanelP
           </div>
           <textarea
             value={editText}
-            onChange={(e) => setEditText(e.target.value)}
+            onChange={(event) => setEditText(event.target.value)}
             className="flex-1 min-h-[100px] w-full text-xs leading-relaxed text-[#3e3832] border border-gray-200 rounded-md p-2 resize-none focus:outline-none focus:border-[#b20155] focus:ring-1 focus:ring-[#b20155]/20"
           />
         </div>

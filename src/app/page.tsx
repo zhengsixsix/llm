@@ -7,8 +7,8 @@ import MindMapViewer from '@/components/MindMapViewer';
 import NodeEditorPanel from '@/components/NodeEditorPanel';
 import HistoryDrawer from '@/components/HistoryDrawer';
 import type { MindMapData } from '@/types/mindmap';
-import { ensureNodeIds, updateNodeTitle } from '@/types/mindmap';
-import { saveRecord, bufferToBase64, base64ToBuffer, type HistoryRecord } from '@/lib/history';
+import { applyNodeTitleUpdates, ensureNodeIds } from '@/types/mindmap';
+import { saveRecord, updateRecord, bufferToBase64, base64ToBuffer, type HistoryRecord } from '@/lib/history';
 
 export default function Home() {
   const { t } = useLanguage();
@@ -29,6 +29,7 @@ export default function Home() {
   const [progressMsg, setProgressMsg] = useState('');
   const [currentJobId, setCurrentJobId] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [currentHistoryRecordId, setCurrentHistoryRecordId] = useState('');
   const [projectUrl, setProjectUrl] = useState('');
   const [curriculumUrl, setCurriculumUrl] = useState('');
   const [activitiesUrl, setActivitiesUrl] = useState('');
@@ -106,7 +107,7 @@ export default function Home() {
   /** 轮询 job 状态直到完成/失败 */
   const pollJobStatus = async (jobId: string): Promise<void> => {
     while (true) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       const res = await fetch(`/api/generate/init?jobId=${jobId}`);
       if (!res.ok) {
@@ -143,12 +144,13 @@ export default function Home() {
             const buffer = await blob.arrayBuffer();
             setXmindBuffer(buffer);
             try {
-              saveRecord({
+              const record = saveRecord({
                 schoolName,
                 programName,
                 mindMapData: mapData,
                 xmindBase64: bufferToBase64(buffer),
               });
+              setCurrentHistoryRecordId(record.id);
             } catch (e) {
               console.warn('历史记录保存失败', e);
             }
@@ -204,9 +206,10 @@ export default function Home() {
   };
 
   // 更新单个节点后重新生成 xmind
-  const handleNodeUpdate = useCallback(async (nodeId: string, newTitle: string) => {
+  const handleNodeUpdates = useCallback(async (updates: Array<{ nodeId: string; newTitle: string }>) => {
     if (!mindMapData) return;
-    const newStructure = updateNodeTitle(mindMapData.structure, nodeId, newTitle);
+    if (updates.length === 0) return;
+    const newStructure = applyNodeTitleUpdates(mindMapData.structure, updates);
     const newData: MindMapData = { ...mindMapData, structure: newStructure };
     setMindMapData(newData);
 
@@ -219,19 +222,44 @@ export default function Home() {
       });
       if (res.ok) {
         const blob = await res.blob();
-        setXmindBuffer(await blob.arrayBuffer());
+        const buffer = await blob.arrayBuffer();
+        setXmindBuffer(buffer);
+        try {
+          const payload = {
+            schoolName,
+            programName,
+            mindMapData: newData,
+            xmindBase64: bufferToBase64(buffer),
+          };
+          if (currentHistoryRecordId) {
+            const updated = updateRecord(currentHistoryRecordId, payload);
+            if (!updated) {
+              const record = saveRecord(payload);
+              setCurrentHistoryRecordId(record.id);
+            }
+          } else {
+            const record = saveRecord(payload);
+            setCurrentHistoryRecordId(record.id);
+          }
+        } catch (historyError) {
+          console.warn('历史记录更新失败', historyError);
+        }
       }
     } catch (e) {
       console.warn('XMind 重新生成失败', e);
     }
-  }, [mindMapData]);
+  }, [currentHistoryRecordId, mindMapData, programName, schoolName]);
 
   const handleLoadHistory = (record: HistoryRecord) => {
     setSchoolName(record.schoolName);
     setProgramName(record.programName);
-    setMindMapData(record.mindMapData);
+    setMindMapData({
+      ...record.mindMapData,
+      structure: ensureNodeIds(record.mindMapData.structure),
+    });
     setXmindBuffer(base64ToBuffer(record.xmindBase64));
     setError('');
+    setCurrentHistoryRecordId(record.id);
     setHistoryOpen(false);
   };
 
@@ -244,6 +272,7 @@ export default function Home() {
     setStylePreference(50);
     setMindMapData(null);
     setXmindBuffer(null);
+    setCurrentHistoryRecordId('');
     setError('');
     setProjectUrl('');
     setCurriculumUrl('');
@@ -639,7 +668,7 @@ export default function Home() {
             <>
               <MindMapViewer file={xmindBuffer} />
               {mindMapData && (
-                <NodeEditorPanel data={mindMapData} onUpdateNode={handleNodeUpdate} />
+                <NodeEditorPanel data={mindMapData} onUpdateNodes={handleNodeUpdates} />
               )}
             </>
           ) : isGenerating ? (

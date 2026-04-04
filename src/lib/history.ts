@@ -30,7 +30,7 @@ export function getRecords(): HistoryRecord[] {
 }
 
 /** 保存一条记录（自动去重、限数量） */
-export function saveRecord(record: Omit<HistoryRecord, 'id' | 'createdAt'>): void {
+export function saveRecord(record: Omit<HistoryRecord, 'id' | 'createdAt'>): HistoryRecord {
   const records = getRecords();
   const newRecord: HistoryRecord = {
     ...record,
@@ -41,6 +41,24 @@ export function saveRecord(record: Omit<HistoryRecord, 'id' | 'createdAt'>): voi
   // 超出上限时移除最旧的
   while (records.length > MAX_RECORDS) records.pop();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  return newRecord;
+}
+
+export function updateRecord(
+  id: string,
+  updates: Pick<HistoryRecord, 'schoolName' | 'programName' | 'mindMapData' | 'xmindBase64'>,
+): HistoryRecord | null {
+  const records = getRecords();
+  const index = records.findIndex((record) => record.id === id);
+  if (index === -1) return null;
+
+  const updatedRecord: HistoryRecord = {
+    ...records[index],
+    ...updates,
+  };
+  records[index] = updatedRecord;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  return updatedRecord;
 }
 
 /** 删除一条记录 */

@@ -5,6 +5,7 @@
  */
 
 import { Redis } from '@upstash/redis';
+import type { StyleProfile } from '@/types/style';
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'error';
 
@@ -14,6 +15,7 @@ export interface BoardResult {
   data: unknown;
   writingGuide: string;
   keyPoints: string[];
+  targetChars?: number;
 }
 
 export interface JobCheckpoint {
@@ -44,6 +46,7 @@ export interface JobData {
     targetWords: number;
     userMaterials: string;
     sampleContent: string;
+    styleProfile?: StyleProfile;
     websiteContent: string;
   };
   checkpoint?: JobCheckpoint;
@@ -84,9 +87,13 @@ export async function updateJob(
   const existing = await getJob(jobId);
   if (!existing) return;
 
+  const nextStatus = updates.status ?? existing.status;
   const updated: JobData = {
     ...existing,
     ...updates,
+    error: (nextStatus === 'processing' || nextStatus === 'completed')
+      ? updates.error
+      : (updates.error ?? existing.error),
     updatedAt: Date.now(),
     lastHeartbeat: Date.now(),
   };

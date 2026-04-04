@@ -1,21 +1,49 @@
-/**
- * 思维导图相关类型定义
- */
+import type { BoardName, WordBudgetPlan } from './budget';
+import type { ProgramProfile, ResumeProfile } from './profile';
+import type { StyleProfile } from './style';
 
-/** 思维导图节点类型 */
 export type NodeType = 'content' | 'explanation' | 'image';
 
-/** 思维导图节点 */
+export interface NodeMeta {
+  boardName?: BoardName;
+  boardGoal?: string;
+  boardThesis?: string;
+  boardBudget?: number;
+  nodeBudget?: number;
+  voiceRole?: 'content' | 'explanation' | 'summary';
+  styleTone?: string;
+  preferredAddress?: string | null;
+  writingGuide?: string;
+  transition?: string;
+  keyPoints?: string[];
+  siblingContents?: string[];
+  visualHint?: string;
+  sampleAnchors?: string[];
+  reviewIssues?: string[];
+}
+
+export interface MindMapGenerationMeta {
+  schoolName?: string;
+  programName?: string;
+  thesis?: string;
+  overallLogic?: string;
+  sampleContent?: string;
+  styleProfile?: StyleProfile;
+  budgetPlan?: WordBudgetPlan;
+  resumeProfile?: ResumeProfile;
+  programProfile?: ProgramProfile;
+}
+
 export interface MindMapNode {
   id?: string;
   title: string;
   type?: NodeType;
   imageKeyword?: string;
   imageUrl?: string;
+  meta?: NodeMeta;
   children?: MindMapNode[];
 }
 
-/** 关联线 */
 export interface Relationship {
   id?: string;
   title: string;
@@ -26,59 +54,132 @@ export interface Relationship {
   linePattern?: string;
 }
 
-/** 思维导图数据 */
 export interface MindMapData {
   rootTitle: string;
   structure: MindMapNode[];
   relationships: Relationship[];
+  generationMeta?: MindMapGenerationMeta;
 }
 
-/* ========== 工具函数 ========== */
-
-let _counter = 0;
+let counter = 0;
 function makeId(): string {
-  return `node_${Date.now()}_${++_counter}`;
+  return `node_${Date.now()}_${++counter}`;
 }
 
-/** 给所有缺少 id 的节点补上唯一 id */
 export function ensureNodeIds(nodes: MindMapNode[]): MindMapNode[] {
-  return nodes.map(n => ({
-    ...n,
-    id: n.id || makeId(),
-    children: n.children ? ensureNodeIds(n.children) : undefined,
+  return nodes.map((node) => ({
+    ...node,
+    id: node.id || makeId(),
+    children: node.children ? ensureNodeIds(node.children) : undefined,
   }));
 }
 
-/** 根据 id 查找节点 */
 export function findNodeById(nodes: MindMapNode[], id: string): MindMapNode | null {
-  for (const n of nodes) {
-    if (n.id === id) return n;
-    if (n.children) {
-      const found = findNodeById(n.children, id);
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children) {
+      const found = findNodeById(node.children, id);
       if (found) return found;
     }
   }
   return null;
 }
 
-/** 替换指定 id 节点的 title，返回新树（不变原树） */
 export function updateNodeTitle(nodes: MindMapNode[], id: string, newTitle: string): MindMapNode[] {
-  return nodes.map(n => {
-    if (n.id === id) return { ...n, title: newTitle };
-    if (n.children) return { ...n, children: updateNodeTitle(n.children, id, newTitle) };
-    return n;
+  return nodes.map((node) => {
+    if (node.id === id) {
+      return { ...node, title: newTitle };
+    }
+    if (node.children) {
+      return { ...node, children: updateNodeTitle(node.children, id, newTitle) };
+    }
+    return node;
   });
 }
 
-/** 获取节点的祖先路径（从根到该节点的 title 数组） */
+export function updateNodeMeta(
+  nodes: MindMapNode[],
+  id: string,
+  updater: (meta: NodeMeta | undefined) => NodeMeta | undefined,
+): MindMapNode[] {
+  return nodes.map((node) => {
+    if (node.id === id) {
+      return { ...node, meta: updater(node.meta) };
+    }
+    if (node.children) {
+      return { ...node, children: updateNodeMeta(node.children, id, updater) };
+    }
+    return node;
+  });
+}
+
 export function getNodePath(nodes: MindMapNode[], id: string, path: string[] = []): string[] | null {
-  for (const n of nodes) {
-    const cur = [...path, n.title];
-    if (n.id === id) return cur;
-    if (n.children) {
-      const found = getNodePath(n.children, id, cur);
+  for (const node of nodes) {
+    const current = [...path, node.title];
+    if (node.id === id) {
+      return current;
+    }
+    if (node.children) {
+      const found = getNodePath(node.children, id, current);
       if (found) return found;
     }
   }
   return null;
+}
+
+export interface BoardContext {
+  boardNode: MindMapNode;
+  boardName: string;
+  boardIndex: number;
+  contentNodes: MindMapNode[];
+  explanationNodes: MindMapNode[];
+  summaryNode?: MindMapNode;
+}
+
+export interface NodeTitleUpdate {
+  nodeId: string;
+  newTitle: string;
+}
+
+export function getBoardContextByNodeId(nodes: MindMapNode[], nodeId: string): BoardContext | null {
+  for (let boardIndex = 0; boardIndex < nodes.length; boardIndex += 1) {
+    const boardNode = nodes[boardIndex];
+    if (!containsNodeId(boardNode, nodeId)) continue;
+
+    const directChildren = boardNode.children || [];
+    const contentNodes = directChildren.filter((child) => child.type === 'content');
+    const explanationNodes = contentNodes.flatMap((child) => (child.children || []).filter((nested) => nested.type === 'explanation'));
+    const summaryNode = directChildren.find((child) => child.type === 'explanation' && child.title.startsWith('板块总结'));
+
+    return {
+      boardNode,
+      boardName: boardNode.title,
+      boardIndex,
+      contentNodes,
+      explanationNodes,
+      summaryNode,
+    };
+  }
+  return null;
+}
+
+export function applyNodeTitleUpdates(nodes: MindMapNode[], updates: NodeTitleUpdate[]): MindMapNode[] {
+  const updateMap = new Map(updates.map((item) => [item.nodeId, item.newTitle]));
+
+  const walk = (nodeList: MindMapNode[]): MindMapNode[] =>
+    nodeList.map((node) => {
+      const nextTitle = node.id ? updateMap.get(node.id) : undefined;
+      return {
+        ...node,
+        title: nextTitle ?? node.title,
+        children: node.children ? walk(node.children) : undefined,
+      };
+    });
+
+  return walk(nodes);
+}
+
+function containsNodeId(node: MindMapNode, id: string): boolean {
+  if (node.id === id) return true;
+  return !!node.children?.some((child) => containsNodeId(child, id));
 }
